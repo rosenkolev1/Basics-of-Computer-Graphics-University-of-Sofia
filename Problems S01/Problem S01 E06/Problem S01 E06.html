@@ -1,0 +1,60 @@
+﻿<html>
+	<head>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="three.min.js"></script>
+		<script>
+			// Задача: Направете дупка в плочката
+			
+			var renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+
+			var scene = new THREE.Scene();
+			
+			var aspect = window.innerWidth/window.innerHeight;
+			var camera = new THREE.PerspectiveCamera( 30, aspect );
+			camera.position.set( 6, 3, 8 );
+			camera.lookAt( new THREE.Vector3() );
+
+			var geometryUpper = new THREE.BoxGeometry( 3, 1, 1/3 );
+			var materialUpper = new THREE.MeshPhongMaterial( {color: 'chartreuse'} );
+			var cubeUpper = new THREE.Mesh( geometryUpper, materialUpper );
+			cubeUpper.position.set(0, 1, 0)
+			scene.add( cubeUpper );
+
+			var geometryLower = new THREE.BoxGeometry( 3, 1, 1/3 );
+			var materialLower = new THREE.MeshPhongMaterial( {color: 'chartreuse'} );
+			var cubeLower = new THREE.Mesh( geometryLower, materialLower );
+			cubeLower.position.set(0, -1, 0)
+			scene.add( cubeLower );
+
+			var geometryLeft = new THREE.BoxGeometry( 1, 1, 1/3 );
+			var materialLeft = new THREE.MeshPhongMaterial( {color: 'chartreuse'} );
+			var cubeLeft = new THREE.Mesh( geometryLeft, materialLeft );
+			cubeLeft.position.set(-1, 0, 0)
+			scene.add( cubeLeft );
+		
+			var geometryRight = new THREE.BoxGeometry( 1, 1, 1/3 );
+			var materialRight = new THREE.MeshPhongMaterial( {color: 'chartreuse'} );
+			var cubeRight = new THREE.Mesh( geometryRight, materialRight );
+			cubeRight.position.set(1, 0, 0)
+			scene.add( cubeRight );
+
+			// var geometry2 = new THREE.BoxGeometry( 1, 1, 1 );
+			// var material2 = new THREE.MeshPhongMaterial( {color: 'black'} );
+			// var cube2 = new THREE.Mesh( geometry2, material2 );
+			// scene.add( cube2 );
+
+			var light = new THREE.PointLight( );
+			light.position.set( 3, 2, 3 );
+			scene.add( light );
+
+			renderer.render(scene, camera);
+		</script>
+	</body>
+</html>
