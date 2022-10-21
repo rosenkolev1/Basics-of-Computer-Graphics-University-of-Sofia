@@ -1,0 +1,129 @@
+﻿<html>
+	<head>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="three.min.js"></script>
+		<script>
+			// Задача: нарисувайте плажна топка, всяка
+			// половина да е от 4 цветни парчета
+			
+			var renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setAnimationLoop( drawFrame );
+			document.body.appendChild( renderer.domElement );
+
+			var scene = new THREE.Scene();
+			
+			var aspect = window.innerWidth/window.innerHeight;
+			var camera = new THREE.PerspectiveCamera( 30, aspect );
+			camera.position.set( 3, 3, 8 );
+			camera.lookAt( new THREE.Vector3() );
+
+			// за удобство
+			var pi2 = Math.PI/2;	// пи/2 - ще ви трябва най-вероятно
+			
+			// Бяла сфера без осветяване - цветовете са еднако ярки
+			// Тази сфера трябва да се разцепи на 8 цветни парчета
+			let whiteSpotThetaLength = pi2/9;
+
+			//Yellow
+			var geometry = new THREE.SphereGeometry( 1.5, 16, 16, 0, pi2, whiteSpotThetaLength, pi2 - whiteSpotThetaLength );
+			var material = new THREE.MeshBasicMaterial({color: "yellow"});
+			let yellowPart = new THREE.Mesh( geometry, material);
+			//scene.add( new THREE.Mesh( geometry, material ) );
+
+			//Green
+			geometry = new THREE.SphereGeometry( 1.5, 16, 16, -pi2, pi2, whiteSpotThetaLength, pi2 - whiteSpotThetaLength );
+			material = new THREE.MeshBasicMaterial({color: "green"});
+			let greenPart = new THREE.Mesh( geometry, material );
+			//scene.add( new THREE.Mesh( geometry, material ) );
+			
+			//Blue
+			geometry = new THREE.SphereGeometry( 1.5, 16, 16, pi2, pi2, whiteSpotThetaLength, pi2 - whiteSpotThetaLength );
+			material = new THREE.MeshBasicMaterial({color: "blue"});
+			let bluePart = new THREE.Mesh( geometry, material ); 
+			//scene.add( new THREE.Mesh( geometry, material ) );
+
+			//Red
+			geometry = new THREE.SphereGeometry( 1.5, 16, 16, pi2*2, pi2, whiteSpotThetaLength, pi2 - whiteSpotThetaLength);
+			material = new THREE.MeshBasicMaterial({color: "red"});
+			let redPart = new THREE.Mesh( geometry, material );
+			//scene.add( new THREE.Mesh( geometry, material ) );
+
+			//White dot in the middle		
+			geometry = new THREE.SphereGeometry( 1.5, 16, 16, 0, pi2*4, 0, whiteSpotThetaLength );
+			material = new THREE.MeshBasicMaterial({color: "white"});
+			let mesh = new THREE.Mesh( geometry, material );
+			//mesh.position.y += 0.1;
+			//scene.add(mesh);
+
+			let topHalfGroup = new THREE.Group();
+			topHalfGroup.add(yellowPart);
+			topHalfGroup.add(greenPart);
+			topHalfGroup.add(bluePart);
+			topHalfGroup.add(redPart);
+			topHalfGroup.add(mesh);
+
+			scene.add(topHalfGroup);
+
+			//Now reverse the group
+			let bottomHalfGroup = topHalfGroup.clone();
+			bottomHalfGroup.rotation.x = pi2*2;
+			bottomHalfGroup.scale.x *= -1;
+			scene.add(bottomHalfGroup);
+
+			//Now reverse all of those for the bottom lol
+
+			// //Yellow
+			// geometry = new THREE.SphereGeometry( 1.5, 16, 16, 0, pi2, whiteSpotThetaLength, pi2 - whiteSpotThetaLength );
+			// material = new THREE.MeshBasicMaterial({color: "yellow"});
+			// mesh = new THREE.Mesh( geometry, material );
+			// mesh.rotation.x = pi2*2;
+			// mesh.rotation.y = pi2;
+			// scene.add(mesh);
+
+			// //Green
+			// geometry = new THREE.SphereGeometry( 1.5, 16, 16, -pi2, pi2, whiteSpotThetaLength, pi2 - whiteSpotThetaLength );
+			// material = new THREE.MeshBasicMaterial({color: "green"});
+			// mesh = new THREE.Mesh( geometry, material );
+			// mesh.rotation.x = pi2*2;
+			// mesh.rotation.y = -pi2;
+			// scene.add(mesh);
+			
+			// //Blue
+			// geometry = new THREE.SphereGeometry( 1.5, 16, 16, pi2, pi2, whiteSpotThetaLength, pi2 - whiteSpotThetaLength );
+			// material = new THREE.MeshBasicMaterial({color: "blue"});
+			// mesh = new THREE.Mesh( geometry, material );
+			// mesh.rotation.x = pi2*2;
+			// mesh.rotation.y = -pi2;
+			// scene.add(mesh);
+
+			// geometry = new THREE.SphereGeometry( 1.5, 16, 16, pi2*2, pi2, whiteSpotThetaLength, pi2 - whiteSpotThetaLength);
+			// material = new THREE.MeshBasicMaterial({color: "red"});
+			// mesh = new THREE.Mesh( geometry, material );
+			// mesh.rotation.x = pi2*2;
+			// mesh.rotation.y = pi2;
+			// scene.add(mesh);
+
+			// //White dot in the middle
+			
+			// geometry = new THREE.SphereGeometry( 1.5, 16, 16, 0, pi2*4, 0, whiteSpotThetaLength );
+			// material = new THREE.MeshBasicMaterial({color: "white"});
+			// mesh = new THREE.Mesh( geometry, material );
+			// mesh.rotation.x = pi2*2;
+			// scene.add(mesh);
+
+			// въртене на сцената
+			function drawFrame()
+			{
+				// scene.rotation.x += 0.005;
+				// scene.rotation.y += 0.005;
+				renderer.render( scene, camera );
+			}
+		</script>
+	</body>
+</html>

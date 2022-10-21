@@ -1,0 +1,187 @@
+﻿<html>
+	<head>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="three.min.js"></script>
+		<script>
+			// Задача: опитайте се да замените куба със сфера,
+			// която да е с гладка повърхност
+			
+			var renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setAnimationLoop(drawFrame);
+			document.body.appendChild( renderer.domElement );
+
+			var scene = new THREE.Scene();
+			
+			var aspect = window.innerWidth/window.innerHeight;
+			var camera = new THREE.PerspectiveCamera( 30, aspect );
+			camera.position.set( 0, 0, 30 );
+			camera.lookAt( new THREE.Vector3() );
+			
+			let geometry, material
+
+			//Generic info + colors
+			let pixelSize = 0.25;
+			let genericZ = pixelSize * 4;
+			
+			let skinColor = "#F5DEB3";
+			let hairColor = "#290600";
+			let scleraColor = "white"; //White part of the eye
+			let pupilColor = "black"; //Steve is a drug addict with perma dialated pupils
+			let noseColor = "#492816";
+			let mouthColor = "SandyBrown";
+			let shirtColor = "#3CB371";
+			let trousersColor = "#6B8E23";
+			let bootsColor = "#32CD32";
+			
+			//Head info
+			let headSize = pixelSize * 8;
+			let headY_dist_fromWorldCenter = pixelSize * 15; 
+
+			//Torso shoulders info
+			let torsoShouldersY = pixelSize * 4;
+			let torsoShouldersZ = genericZ;
+			let torsoShouldersX = pixelSize * 16;
+
+			//Torso stomach	info
+			let handsBelowHipsY = pixelSize * 2; 		
+			let torsoStomachY = pixelSize * 6;
+			let torsoStomachZ = genericZ;
+			let torsoStomachX = pixelSize * 8;
+
+			//Arms info
+			let armX = pixelSize * 4;
+			let armY = pixelSize * 8;
+			let armZ = genericZ;
+
+			//Legs info
+			let legX = headSize/2;
+			let legY = pixelSize * 12;
+			let legZ = genericZ;			
+
+			//Feet/Boots info
+			let feetX = pixelSize * 4;
+			let feetY = pixelSize * 2; 
+			let feetZ = genericZ;
+
+			//Steve is 4 * headSize tall, a.k.a he is 32 pixels tall
+			let steve = new THREE.Group();
+
+			//Head
+			//Separate head into many cubes
+			for(let x = 0; x < 8; x++){
+				for(let y = 0; y < 8; y++){
+					for (let z = 0; z < 8; z++) {						
+						geometry = new THREE.BoxGeometry( pixelSize, pixelSize, pixelSize );
+
+						let materialColor = null;
+
+						//Hair parts, Face view
+						if(y >= 0 && y <= 1 && z === 0) materialColor = hairColor;
+						else if(y === 2 && (x === 0 || x === 7) && z === 0) materialColor = hairColor;
+
+						//Hair parts, Side view
+						if(y >= 0 && y <= 3 && z >= 1) materialColor = hairColor;
+
+						//Face only parts
+						if(y === 4 && (x === 1 || x === 5) && z === 0 ) materialColor = pupilColor;
+						else if(y === 4 && (x == 2 || x === 6) && z === 0) materialColor = scleraColor;
+						else if(y === 5 && (x == 3 || x === 4) && z === 0) materialColor = noseColor;
+						else if(y === 6 && x >= 2 && x <= 5 && z === 0) materialColor = mouthColor;
+						
+						if(!materialColor) materialColor = skinColor; 
+
+						material = new THREE.MeshPhongMaterial({color: materialColor});
+						let head = new THREE.Mesh( geometry, material );
+						head.position.x = -headSize/2 + pixelSize/2 + x * pixelSize; 
+						head.position.y = headY_dist_fromWorldCenter + pixelSize/2 + pixelSize*3 - y * pixelSize;
+						head.position.z = pixelSize/2 + pixelSize * 3 - z * pixelSize;
+
+						steve.add(head);
+					}	
+				}
+			}
+			
+
+			//Torso shoulders
+			geometry = new THREE.BoxGeometry(torsoShouldersX, torsoShouldersY, torsoShouldersZ);
+			material = new THREE.MeshPhongMaterial({color: shirtColor});
+			let torsoShoulders = new THREE.Mesh(geometry, material);
+			torsoShoulders.position.y = headY_dist_fromWorldCenter - (headSize + torsoShouldersY)/2;
+
+			//Torso stomach
+			geometry = new THREE.BoxGeometry(torsoStomachX, torsoStomachY, torsoStomachZ);
+			let torsoStomach = new THREE.Mesh(geometry, material);
+			torsoStomach.position.y = torsoShoulders.position.y - (torsoShouldersY + torsoStomachY)/2;
+
+			//Hands
+			geometry = new THREE.BoxGeometry(armX, armY, armZ);
+			material = new THREE.MeshPhongMaterial({color: skinColor});
+			let leftArm = new THREE.Mesh(geometry, material);
+			leftArm.position.y = torsoShoulders.position.y - (torsoShouldersY + armY)/2;
+			leftArm.position.x = torsoStomach.position.x - (torsoStomachX + armX) / 2; 
+
+			let rightArm = leftArm.clone();
+			rightArm.position.x *= -1;
+
+			//Trousers/Legs
+			geometry = new THREE.BoxGeometry(legX, legY, legZ);
+			material = new THREE.MeshPhongMaterial({color: trousersColor});
+			let leftLeg = new THREE.Mesh(geometry, material);
+			leftLeg.position.y = torsoStomach.position.y - (torsoStomachY + legY)/2;
+			leftLeg.position.x = torsoStomach.position.x - legX / 2; 
+
+			let rightLeg = leftLeg.clone();
+			rightLeg.position.x *= -1;
+
+			//Feet/Boots
+			geometry = new THREE.BoxGeometry(feetX, feetY, feetZ);
+			material = new THREE.MeshPhongMaterial({color: bootsColor});
+			let leftFoot = new THREE.Mesh(geometry, material);
+			leftFoot.position.y = leftLeg.position.y - (legY + feetY)/2;
+			leftFoot.position.x = leftLeg.position.x; 
+
+			rightFoot = leftFoot.clone();
+			rightFoot.position.x *= -1;
+
+			// steve.add(head);
+			steve.add(torsoShoulders);
+			steve.add(torsoStomach);
+			steve.add(leftArm);
+			steve.add(rightArm);
+			steve.add(leftLeg);
+			steve.add(rightLeg);
+			steve.add(leftFoot);
+			steve.add(rightFoot);
+
+			steve.rotation.y = Math.PI;
+
+			scene.add(steve);
+
+			var light = new THREE.PointLight( );
+			light.position.set( 3, 3, 8 );
+			scene.add( light );
+
+			//Add new light beneath Steve so you can see his fabulous chin
+			
+			light = new THREE.PointLight();
+			light.position.set(0, -10, 0);
+			scene.add(light);
+
+			renderer.render( scene, camera );
+
+			function drawFrame()
+			{
+				// steve.rotation.x += 0.005;
+				steve.rotation.y += 0.02;
+				renderer.render( scene, camera );
+			}
+
+		</script>
+	</body>
+</html>
