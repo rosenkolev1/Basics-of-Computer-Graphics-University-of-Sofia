@@ -1,0 +1,91 @@
+﻿<html>
+	<head>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="three.min.js"></script>
+		<script>
+			// Задача: направете полет над кристална планета
+			// с големи, ръбести, лъскави кристали
+			
+			
+			var renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setAnimationLoop( drawFrame );
+			document.body.appendChild( renderer.domElement );
+
+			var scene = new THREE.Scene();
+			
+			var aspect = window.innerWidth/window.innerHeight;
+			var camera = new THREE.PerspectiveCamera( 30, aspect );
+			camera.position.set( 0, 5, 40 );
+			camera.lookAt( new THREE.Vector3(0, 13, 0) );
+
+			// Планета - за момента е сфера, решете как да
+			// я кристализирате цялата (подсказка - не чрез сфера)
+
+			let crystalPlanet = new THREE.Group();
+			
+			let geometry = new THREE.IcosahedronGeometry(16, 1);
+
+			var material = new THREE.MeshPhongMaterial({
+				color: `hsl(300, 100%, 50%)`, 
+				flatShading: true, // плоско осветяване - всяка стена е едноцветна
+				shininess: 50, // степен на лъскавост
+				specular: `hsl(300, 100%, 25%)` // цвят на лъскавината
+			});
+			var firstObj = new THREE.Mesh( geometry, material );
+			crystalPlanet.add(firstObj);
+
+			let objCount = 20;
+			for (let index = 0; index < objCount; index++) {
+				
+				let signModifier = (index % 2 == 0 ? 1 : -1);
+				let hue = 300 + Math.random() * 10;
+				let color = `hsl(${hue}, 100%, 50%)`;
+				let specularColor = `hsl(${hue}, 100%, 5%)`;
+
+				colorModifier = Math.random() * 10 * signModifier;
+
+				material = new THREE.MeshPhongMaterial({
+					color: color, 
+					flatShading: true, // плоско осветяване - всяка стена е едноцветна
+					shininess: 50, // степен на лъскавост
+					specular: specularColor // цвят на лъскавината
+				});
+				// material = new THREE.MeshPhongMaterial({color: })
+
+				geometry = new THREE.IcosahedronGeometry(16 + Math.random() * 0.5, 1);
+				let secondObj = new THREE.Mesh( geometry, material );
+
+				secondObj.rotation.y += Math.PI*2*Math.random();
+				secondObj.rotation.x += Math.PI*2*Math.random();
+
+				secondObj.position.y += 0.1*Math.random() * signModifier;
+				secondObj.position.x += 0.1*Math.random() * signModifier;
+				secondObj.position.z += 0.1*Math.random() * signModifier;
+
+				crystalPlanet.add(secondObj);
+			}
+			
+			var light = new THREE.PointLight();
+			light.position.set( 0, 0, 50 );
+			scene.add( light );
+
+			// let light2 = new THREE.PointLight();
+			// light2.position.set( 0, 100, 0 );
+			// scene.add( light2 );
+
+			scene.add(crystalPlanet);
+
+			function drawFrame()
+			{
+				crystalPlanet.rotation.x += 0.01;
+				renderer.render( scene, camera );
+			}
+		</script>
+	</body>
+</html>

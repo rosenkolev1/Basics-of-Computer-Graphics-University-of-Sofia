@@ -1,0 +1,242 @@
+﻿<html>
+	<head>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<iframe src="Zelda _ Ocarina Of Time Open Chest With get Item sound.mp3" allow="autoplay" id="audio" ></iframe>
+		<audio controls autoplay muted>
+			<source src="Zelda _ Ocarina Of Time Open Chest With get Item sound.mp3" type="audio/mpeg">
+		  Your browser does not support the audio element.
+		</audio>
+
+		<!-- <button id="Hehe">
+			Something
+		</button> -->
+		<script src="three.min.js"></script>
+		<script>
+			
+			let renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setAnimationLoop( drawFrame );
+			document.body.appendChild( renderer.domElement );
+
+			// цвят на фона - чрез име на цвят
+			let scene = new THREE.Scene();
+			let color = new THREE.Color("bisque");
+			scene.background = color;
+
+			//Forward light
+			let light1 = new THREE.PointLight();
+			light1.position.set(0, 0, 100);
+			scene.add(light1);
+
+			//Back light
+			let light3 = new THREE.PointLight();
+			light3.position.set(0, 0, -100);
+			scene.add(light3);
+
+			//Left light
+			let light4 = new THREE.PointLight();
+			light4.position.set(-100, 0, 0);
+			scene.add(light4);
+
+			//Right light
+			let light5 = new THREE.PointLight();
+			light5.position.set(100, 0, 0);
+			scene.add(light5);
+			
+			//Top-down light
+			let light2 = new THREE.PointLight();
+			light2.position.set(0, 50, 0);
+			scene.add(light2);
+
+			let aspect = window.innerWidth/window.innerHeight;
+			let camera = new THREE.PerspectiveCamera( 30, aspect );
+			camera.position.set( 0, 10, 100 );
+			camera.lookAt( new THREE.Vector3() );
+		
+			let group = new THREE.Group();
+			scene.add( group );
+		
+			let ring = new THREE.Group();
+
+			//Ring torus
+			let material = new THREE.MeshPhongMaterial({color: "CornflowerBlue", shininess: 50, metalness: 1});
+			let geometry = new THREE.TorusGeometry( 5, 1, 16, 100 );
+			let ringTorus = new THREE.Mesh( geometry, material );
+			ringTorus.position.set( 0, 5, 0 );
+			ring.add( ringTorus );
+
+			//Ring
+
+			material = new THREE.MeshStandardMaterial({color: "Cyan", shininess: 70, roughness: 0.8, metalness: 0});
+			geometry = new THREE.BoxGeometry(4, 6, 1.5);
+			let ringRectangle = new THREE.Mesh(geometry, material);
+			ringRectangle.position.y = 11 + 2;
+
+			material = new THREE.MeshPhongMaterial({color: "SlateBlue", shininess: 70, roughness: 0.8, metalness: 0});
+			geometry = new THREE.CylinderGeometry(1, 1, 1.5, 64);
+			let ringCylinderLeft = new THREE.Mesh(geometry, material);
+			let rignCylinderX_Offset = (4 + 2) / 2 - 0.1; // Width of rectangle + diameter of cylinder divided by 2 - a little bit so it looks better
+			ringCylinderLeft.position.y = ringRectangle.position.y;
+			ringCylinderLeft.position.x = -rignCylinderX_Offset
+			ringCylinderLeft.rotation.x = Math.PI/2;
+
+			let ringCylinderRight = ringCylinderLeft.clone();
+			ringCylinderRight.position.x = rignCylinderX_Offset;
+
+			ring.add(ringCylinderRight);
+			ring.add(ringCylinderLeft);
+			ring.add(ringRectangle); 
+
+			//Ring Box base
+			let ringBoxBase = new THREE.Group();
+			//Function to rotate an object around a pivot
+			function rotateAroundPivot(mesh, pivotPoint, axis, angle){
+				let pivotPointCopy = pivotPoint.clone();
+				let pivotDiff = mesh.position.clone().add(pivotPointCopy.multiplyScalar(-1));
+
+				//Change the current object pos to the pivotPoint
+				mesh.position.set(pivotPoint.x, pivotPoint.y, pivotPoint.z);
+
+				//Rotate the object
+				mesh.rotateOnAxis(axis, angle);
+
+				//Rotate the pivotDiff
+				pivotDiff.applyAxisAngle(axis, angle);
+
+				//Move the object back by the pivotDiff
+				let distanceToPivot = pivotDiff.length();
+				let pivotDiffNormalized = pivotDiff.normalize();
+				mesh.position.add(pivotDiffNormalized.multiplyScalar(distanceToPivot));
+			}
+
+			material = new THREE.MeshPhongMaterial({color: 0x050505});
+			geometry = new THREE.BoxGeometry( 16, 12, 1 );
+			ringBoxFrontSide = new THREE.Mesh( geometry, material );
+			ringBoxFrontSide.position.set( 0, 0, 7.5 );
+			
+
+			let ringBoxWallsPivot = new THREE.Vector3(0, 0, 0);
+			let yAxis = new THREE.Vector3(0, 1, 0);
+
+			let ringBoxLeftSide = ringBoxFrontSide.clone();
+			rotateAroundPivot(ringBoxLeftSide, ringBoxWallsPivot, yAxis, Math.PI / 2);		
+
+			let ringBoxRightSide = ringBoxFrontSide.clone();
+			rotateAroundPivot(ringBoxRightSide, ringBoxWallsPivot, yAxis, -Math.PI / 2);
+
+			let ringBoxBackSide = ringBoxFrontSide.clone();
+			rotateAroundPivot(ringBoxBackSide, ringBoxWallsPivot, yAxis, Math.PI);
+
+			//Bottom of the box
+			geometry = new THREE.BoxGeometry( 16, 4, 16 );
+			ringBoxFloor = new THREE.Mesh( geometry, material );
+			ringBoxFloor.position.set( 0, -2 - 2, 0 );
+
+			ringBoxBase.add(ringBoxFrontSide);
+			ringBoxBase.add(ringBoxLeftSide);
+			ringBoxBase.add(ringBoxRightSide);
+			ringBoxBase.add(ringBoxBackSide);
+			ringBoxBase.add(ringBoxFloor);
+
+			//Box Lid
+			let boxLid = new THREE.Group();
+			material = new THREE.MeshPhongMaterial({color: 0x202020})
+			let boxLidCeil = ringBoxFloor.clone();
+			boxLidCeil.material.color.set(0x202020);
+			boxLidCeil.scale.y /= 2;
+			boxLidCeil.position.y = 20
+
+			geometry = new THREE.BoxGeometry(16, 13, 1)
+			let boxLidFrontSide = new THREE.Mesh(geometry, material);
+			boxLidFrontSide.position.y = 12.5;
+			boxLidFrontSide.position.z = 7.5;
+
+			let boxLidPivot = new THREE.Vector3(0, boxLidFrontSide.position.y, 0);
+
+			let boxLidLeftSide = boxLidFrontSide.clone();
+			rotateAroundPivot(boxLidLeftSide, boxLidPivot, yAxis, -Math.PI / 2);
+
+			let boxLidRightSide = boxLidFrontSide.clone();
+			rotateAroundPivot(boxLidRightSide, boxLidPivot, yAxis, Math.PI / 2);
+
+			let boxLidBackSide = boxLidFrontSide.clone();
+			rotateAroundPivot(boxLidBackSide, boxLidPivot, yAxis, Math.PI);
+
+			boxLid.add(boxLidCeil);
+			boxLid.add(boxLidFrontSide);
+			boxLid.add(boxLidLeftSide);
+			boxLid.add(boxLidRightSide);
+			boxLid.add(boxLidBackSide);
+
+			//boxLid.position.y += 5;
+			boxLidPivot = new THREE.Vector3(0, ringBoxBackSide.position.y + 6, -8)
+			//rotateAroundPivot(boxLid, boxLidPivot, new THREE.Vector3(1, 0, 0), -Math.PI/1.75);
+
+			group.add( ringBoxBase );
+			group.add( boxLid);
+			group.add( ring);
+			
+			
+			let targetTotalRotation = -Math.PI/1.5;
+			let rotationStep = targetTotalRotation / 150;
+			let totalRotation = 0;
+
+			let initStartDelay = false;
+
+			let initLidOpening = false;
+			let lidOpening = false;
+			let initSettimeout = false;
+			let rotatingGroup = false;
+
+			window.onload = function() {
+				let audioControl = document.getElementsByTagName("audio")[0];	 
+				audioControl.muted = false;
+			}		
+
+			function drawFrame()
+			{
+				if(!initStartDelay){
+					initStartDelay = true;
+					
+					setTimeout(() => {
+					
+						if(!initSettimeout){
+							setTimeout(() => {
+								rotatingGroup = true;
+							}, 4500);
+							
+							initSettimeout = true;
+						}
+
+						if(!initLidOpening){
+							setTimeout(() => {
+								lidOpening = true;
+							}, 1000);
+							
+							initLidOpening = true;
+						}
+
+					}, 6000);	
+				}
+				
+				if(lidOpening && totalRotation >= targetTotalRotation){
+					rotateAroundPivot(boxLid, boxLidPivot, new THREE.Vector3(1, 0, 0), rotationStep);
+
+					totalRotation += rotationStep;
+				}
+
+				if(rotatingGroup){
+					group.rotation.x += 0.005;
+					group.rotation.y += 0.005;
+				}
+
+				renderer.render( scene, camera );
+			}
+		</script>
+	</body>
+</html>

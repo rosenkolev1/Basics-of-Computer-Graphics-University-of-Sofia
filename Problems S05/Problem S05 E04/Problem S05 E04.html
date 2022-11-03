@@ -1,0 +1,74 @@
+﻿<html>
+	<head>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="three.min.js"></script>
+		<script src="CSG.js"></script>
+		<script>
+			// Задача: конструирайте ... хипербола
+
+			
+			var renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setAnimationLoop( drawFrame );
+			document.body.appendChild( renderer.domElement );
+
+			var scene = new THREE.Scene();
+			
+			var aspect = window.innerWidth/window.innerHeight;
+			camera = new THREE.PerspectiveCamera( 30, aspect );
+			camera.position.set( 0, 0, 300 );
+			camera.lookAt( new THREE.Vector3() );
+
+			// За момента имаме само окръжност
+			let material = new THREE.MeshPhongMaterial();
+
+			let offSet = 10;
+
+			let cone1Geom = new THREE.CylinderGeometry(0.01, 100, 80, 64);
+			let cone1Mesh = new THREE.Mesh(cone1Geom, material);
+			cone1Mesh.position.y -= 40 + offSet;
+
+			let cone2Mesh = cone1Mesh.clone();
+			cone2Mesh.position.y *= - 1;
+			cone2Mesh.rotation.z = Math.PI;
+
+			let endResult = new THREE.Group();
+
+			let separatorGeom = new THREE.BoxGeometry(0.1, 300, 400);
+			let separatorMesh = new THREE.Mesh(separatorGeom, material);
+			separatorMesh.position.x += 20;
+
+			let csg = new CSG();
+			csg.union([cone1Mesh, cone2Mesh]);
+			let unionCones = csg.toMesh();
+			csg = new CSG();
+			csg.intersect([unionCones, separatorMesh]);
+			let hyperbolas = csg.toMesh();
+			scene.add(hyperbolas);
+
+			// endResult.add(unionCones);
+			// endResult.add(separatorMesh);
+			// scene.add(endResult);
+
+			// Добавяме светлина
+			light = new THREE.PointLight( 'lightblue' );
+			light.position.set( 0, 0, 100 );
+			scene.add( light );
+			
+			function drawFrame()
+			{
+				// въртим окръжността
+				// circle.rotation.x += 0.005;
+				hyperbolas.rotation.y += 0.004;
+				// circle.rotation.z += 0.003;
+				
+				renderer.render( scene, camera );
+			}
+		</script>
+	</body>
+</html>
