@@ -6,7 +6,7 @@
 		</style>
 	</head>
 	<body>
-		<script src="three.min.js"></script>
+		<script src="three.min copy.js"></script>
 		<script>
 			// Задача: конструирайте цилиндрична тръба като
 			// стената ѝ има дебелина
@@ -33,6 +33,7 @@
 			scene.add(platform);
 			
 			let lightsColor = "#FF9F46";
+			let lightEmissiveColor = '#C76408';
 			let intensityBase = 1;
 			
 			let lightOne = new THREE.PointLight(lightsColor, intensityBase);
@@ -47,9 +48,24 @@
 			lightThree.position.set( -40, -10, 3 );
 			scene.add( lightThree );
 
+			let rectOneGeom1 = new THREE.BoxGeometry(Math.sqrt(40*40 + 50 * 50), 0.6, 0.6);
+			let material = new THREE.MeshPhongMaterial( {color: lightEmissiveColor, shininess: 30, emissive: lightEmissiveColor, 
+				emissiveIntensity: 1,
+			 	metalness: 1} );
+			let rectOneMesh1 = new THREE.Mesh(rectOneGeom1, material);
+			rectOneMesh1.position.set(-60, -35, 1)
+			rectOneMesh1.rotation.z = Math.PI / 2 - 0.67;
+			scene.add(rectOneMesh1);
+
 			let light4 = new THREE.PointLight(lightsColor, intensityBase * 2);
 			light4.position.set( -30, 5, 3 );
 			scene.add( light4 );
+
+			let rect2Geom = new THREE.BoxGeometry(Math.sqrt(10*10 + 15 * 15) + 0.7, 0.6, 0.6);
+			let rect2Mesh = new THREE.Mesh(rect2Geom, material);
+			rect2Mesh.position.set(-35, -2.5 + 0.5, 1)
+			rect2Mesh.rotation.z = Math.PI / 2 - 0.59;
+			scene.add(rect2Mesh);
 
 			let light5 = new THREE.PointLight(lightsColor, intensityBase);
 			light5.position.set( -35, 13, 3 );
@@ -59,21 +75,69 @@
 			light6.position.set( -17, 28, 3 );
 			scene.add( light6 );
 
+			//-17 28 3 | -30 5 3
+
+			let rect3Geom = new THREE.BoxGeometry(Math.sqrt(13*13 + 23 * 23), 0.6, 0.6);
+			let rect3Mesh = new THREE.Mesh(rect3Geom, material);
+			rect3Mesh.position.set(-47/2, 33/2, 1)
+			rect3Mesh.rotation.z = Math.PI / 2 - 0.54;
+			scene.add(rect3Mesh);
+
 			let light7 = new THREE.PointLight(lightsColor, intensityBase);
 			light7.position.set( -35, 55, 3 );
 			scene.add( light7 );
+
+			//-17 28 3 | -35 55 3
+
+			let rect4Geom = new THREE.BoxGeometry(Math.sqrt(18*18 + 27 * 27), 0.6, 0.6);
+			let rect4Mesh = new THREE.Mesh(rect4Geom, material);
+			rect4Mesh.position.set(-52/2, 83/2, 1)
+			rect4Mesh.rotation.z = Math.PI / 2 + 0.6;
+			scene.add(rect4Mesh);
 
 			let light8 = new THREE.PointLight(lightsColor, intensityBase);
 			light8.position.set( -48, 55, 3 );
 			scene.add( light8 );
 
+			//-35 55 3 | -48, 55, 3
+
+			let rect5Geom = new THREE.BoxGeometry(Math.sqrt(13*13), 0.6, 0.6);
+			let rect5Mesh = new THREE.Mesh(rect5Geom, material);
+			rect5Mesh.position.set(-83/2, 110/2, 1)
+			rect5Mesh.rotation.z = 0;
+			scene.add(rect5Mesh);
+
 			let light9 = new THREE.PointLight(lightsColor, intensityBase);
 			light9.position.set( -48, 65, 3 );
 			scene.add( light9 );
 
+			//-48, 65, 3 | -48, 55, 3
+
+			let rect6Geom = new THREE.BoxGeometry(10, 0.6, 0.6);
+			let rect6Mesh = new THREE.Mesh(rect6Geom, material);
+			rect6Mesh.position.set(-96/2, 120/2, 1)
+			rect6Mesh.rotation.z = Math.PI / 2;
+			scene.add(rect6Mesh);
+
 			let light10 = new THREE.PointLight(lightsColor, intensityBase);
 			light10.position.set( -40, 70, 3 );
 			scene.add( light10 );
+			
+			//-48, 65, 3 | -40, 70, 3
+
+			let rect7Geom = new THREE.BoxGeometry(Math.sqrt(8*8 + 5 * 5), 0.6, 0.6);
+			let rect7Mesh = new THREE.Mesh(rect7Geom, material);
+			rect7Mesh.position.set(-88/2, 135/2 - 0.2, 1)
+			rect7Mesh.rotation.z = Math.PI / 2 - 1;
+			scene.add(rect7Mesh);
+
+			//-40, 70, 3 | -35, 55, 3
+
+			let rect8Geom = new THREE.BoxGeometry(Math.sqrt(5*5 + 15 * 15) + 0.2, 0.6, 0.6);
+			let rect8Mesh = new THREE.Mesh(rect8Geom, material);
+			rect8Mesh.position.set(-75/2, 125/2 - 0.2, 1)
+			rect8Mesh.rotation.z = Math.PI / 2 + 0.3;
+			scene.add(rect8Mesh);
 			
 			//lightOne.target = light10;
 
