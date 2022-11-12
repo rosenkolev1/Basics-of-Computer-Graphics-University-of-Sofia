@@ -1,0 +1,395 @@
+﻿<html>
+	<head>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+
+		<!-- Import maps polyfill -->
+		<!-- Remove this when import maps will be widely supported -->
+		<script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../node_modules/three/build/three.module.js",
+					"three/addons/": "../node_modules/three/examples/jsm/"
+				}
+			}
+		</script>
+		<script type="module">
+			import * as THREE from './three.module.js';
+			import { OrbitControls } from './OrbitControls.js';
+			import {CSG} from './CSG.js'
+
+			var renderer = new THREE.WebGLRenderer({antialias:true});
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setAnimationLoop( drawFrame );
+			document.body.appendChild( renderer.domElement );
+
+			var scene = new THREE.Scene();
+			scene.background = new THREE.Color( 'lightsteelblue' );
+			
+			var aspect = window.innerWidth/window.innerHeight;
+			var camera = new THREE.PerspectiveCamera( 30, aspect );
+			camera.position.set( 0, 16, 30 );
+			camera.lookAt( new THREE.Vector3() );
+
+			//Setup texture loader
+			let textureLoader = new THREE.TextureLoader();
+
+			//Controls
+			let controls = new OrbitControls( camera, renderer.domElement );
+
+			//My own func
+			//Function to rotate an object around a pivot
+			function rotateAroundPivot(mesh, pivotPoint, axis, angle){
+				let pivotPointCopy = pivotPoint.clone();
+				let pivotDiff = mesh.position.clone().add(pivotPointCopy.multiplyScalar(-1));
+
+				//Change the current object pos to the pivotPoint
+				mesh.position.set(pivotPoint.x, pivotPoint.y, pivotPoint.z);
+
+				//Rotate the object
+				mesh.rotateOnAxis(axis, angle);
+
+				//Rotate the pivotDiff
+				pivotDiff.applyAxisAngle(axis, angle);
+
+				//Move the object back by the pivotDiff
+				let distanceToPivot = pivotDiff.length();
+				let pivotDiffNormalized = pivotDiff.normalize();
+				mesh.position.add(pivotDiffNormalized.multiplyScalar(distanceToPivot));
+			}
+
+			let darkGreyMat = new THREE.MeshPhongMaterial({color: 'darkgrey'});
+			let material = darkGreyMat;
+			let geometry = new THREE.BoxGeometry(7, 0.2, 5);
+			let barbequeBottom = new THREE.Mesh(geometry, material);
+			
+			let wallsHeight = 4;
+			let wallsWidth = 0.2
+
+			geometry = new THREE.BoxGeometry(7, wallsHeight, wallsWidth);
+			let barbequeBackWall = new THREE.Mesh(geometry, material)
+			barbequeBackWall.position.set(0, wallsHeight / 2 + wallsWidth/2, -2.5 + wallsWidth/2);
+
+			geometry = new THREE.BoxGeometry(wallsWidth, wallsHeight, 5);
+			let barbequeLeftWall = new THREE.Mesh(geometry, material);
+			barbequeLeftWall.position.set(-3.5 + wallsWidth/2, wallsHeight / 2 + wallsWidth/2, 0)
+
+			let barbequeRightWall = barbequeLeftWall.clone();
+			barbequeRightWall.position.x *= -1;
+
+			let quarterCircleRad = 3;
+			geometry = new THREE.CylinderGeometry(quarterCircleRad, quarterCircleRad, 20, 64, 1, false, 0, Math.PI / 2)
+			let quarterCircleWallCutoff = new THREE.Mesh(geometry);
+			quarterCircleWallCutoff.material.side = THREE.DoubleSide;
+			quarterCircleWallCutoff.rotation.z += Math.PI / 2;
+			quarterCircleWallCutoff.rotation.x -= Math.PI;
+			quarterCircleWallCutoff.position.y += 4.75; 
+			quarterCircleWallCutoff.position.z += 2.5;
+
+			let csg = new CSG();
+
+			csg.union([barbequeLeftWall, barbequeRightWall]);
+
+			let barbequeBoxSideWalls = csg.toMesh();
+			
+			//Barbeque lid
+			let barbequeLid = new THREE.Group();
+
+			let lidWallHeight = 1;
+
+			let lidMaterial = new THREE.MeshPhongMaterial({color: "white"});
+			geometry = new THREE.BoxGeometry(7, lidWallHeight, wallsWidth);
+
+			let lidBackWall = new THREE.Mesh(geometry, lidMaterial);
+			lidBackWall.position.y = barbequeBackWall.position.y + wallsHeight / 2 + lidWallHeight / 2;
+			lidBackWall.position.z = barbequeBackWall.position.z;
+			
+			geometry = new THREE.BoxGeometry(wallsWidth, lidWallHeight, 5);
+			let lidLeftWall = new THREE.Mesh(geometry, lidMaterial);
+			lidLeftWall.position.x = barbequeLeftWall.position.x;
+			lidLeftWall.position.y = lidBackWall.position.y;
+
+			let lidRightWall = lidLeftWall.clone();
+			lidRightWall.position.x *= -1;
+
+			//The quarter circles of the lid side walls
+			csg = new CSG();
+			csg.intersect( [barbequeBoxSideWalls, quarterCircleWallCutoff] );
+			let barbequeLidSideWalls_QuarterCircles = csg.toMesh();
+			barbequeLidSideWalls_QuarterCircles.material = lidMaterial;
+
+			//Unite the quarter circles with the lid walls
+			csg = new CSG();
+			csg.union([barbequeLidSideWalls_QuarterCircles, lidRightWall, lidLeftWall]);
+			let lidSideWalls = csg.toMesh();
+
+			//Lid ceiling
+			let lidCeiling = barbequeBottom.clone();
+			lidCeiling.material = lidMaterial;
+			lidCeiling.position.y = lidBackWall.position.y + lidWallHeight / 2 - wallsWidth / 2;
+
+			//Lid front wall
+			geometry = new THREE.BoxGeometry(7 - wallsWidth*2, lidWallHeight + quarterCircleRad, wallsWidth);
+			let lidFront = new THREE.Mesh(geometry, lidMaterial);
+			lidFront.position.y = lidCeiling.position.y - wallsWidth / 2 - (lidWallHeight + quarterCircleRad) / 2;
+			lidFront.position.z = 2.5 - wallsWidth / 2;
+
+			barbequeLid.add(lidBackWall);
+			barbequeLid.add(lidSideWalls);
+			barbequeLid.add(lidCeiling);
+			barbequeLid.add(lidFront);
+			
+			//The quarter circles removed from the side walls
+			csg = new CSG();
+			csg.subtract( [barbequeBoxSideWalls, quarterCircleWallCutoff] );
+			barbequeBoxSideWalls = csg.toMesh();
+			barbequeBoxSideWalls.material = material;
+
+			let barbequeBox = new THREE.Group();
+			barbequeBox.add(barbequeBottom);
+			barbequeBox.add(barbequeBackWall);
+			barbequeBox.add(barbequeBoxSideWalls);
+
+			let wallBoltsRad = 0.07;
+
+			material = new THREE.MeshPhongMaterial({color: "gray"});
+			geometry = new THREE.CylinderGeometry(wallBoltsRad, wallBoltsRad, 0.4, 64);
+
+			let wallBoltsHeightOffset = 0.7;
+
+			let boxWallBolt1 = new THREE.Mesh(geometry, material);
+			boxWallBolt1.rotation.z = Math.PI / 2;
+			boxWallBolt1.position.x -= 3.5 - 0.2 - wallsWidth/2;
+			boxWallBolt1.position.y = wallBoltsHeightOffset;
+			boxWallBolt1.position.z = -2;
+
+			let boxWallBolt2 = boxWallBolt1.clone();
+			boxWallBolt2.position.x *= -1;
+
+			let boxWallBolt3 = boxWallBolt1.clone();
+			boxWallBolt3.position.x *= -1;
+			boxWallBolt3.position.z *= -1;
+
+			let boxWallBolt4 = boxWallBolt1.clone();
+			boxWallBolt4.position.z *= -1;
+					
+			let barbequeBolts = new THREE.Group();
+			barbequeBolts.add(boxWallBolt1);
+			barbequeBolts.add(boxWallBolt2);
+			barbequeBolts.add(boxWallBolt3);
+			barbequeBolts.add(boxWallBolt4);
+
+			let gridBoltHeight = 5 - wallsWidth*2 - wallBoltsRad*2;
+
+			geometry = new THREE.CylinderGeometry(wallBoltsRad, wallBoltsRad, gridBoltHeight, 64);
+			material = new THREE.MeshPhongMaterial({color: "whitesmoke"});
+
+			let gridBolt = new THREE.Mesh(geometry, material);
+			let gridBoltsX_offset = (boxWallBolt2.position.x - boxWallBolt1.position.x)/20;
+			let gridBoltY_pos = wallBoltsHeightOffset + wallBoltsRad*2;
+
+			let barbequeGrid = new THREE.Group();
+
+			for(let x = boxWallBolt1.position.x; x < boxWallBolt2.position.x; x += gridBoltsX_offset){
+				
+				let newGridBolt = gridBolt.clone(); 
+
+				newGridBolt.rotation.x = Math.PI / 2;
+				newGridBolt.position.y = gridBoltY_pos;
+				newGridBolt.position.x = x;
+
+				barbequeGrid.add(newGridBolt);
+			}
+
+			geometry = new THREE.CylinderGeometry(wallBoltsRad, wallBoltsRad, 7 - 2*wallsWidth - wallBoltsRad, 64);
+			let horizontalGridBolt1 = new THREE.Mesh(geometry, material)
+			horizontalGridBolt1.rotation.z = Math.PI / 2;
+			horizontalGridBolt1.position.z -= (gridBoltHeight) / 2;
+			horizontalGridBolt1.position.y = gridBoltY_pos;
+
+			let horizontalGridBolt2 = horizontalGridBolt1.clone();
+			horizontalGridBolt2.position.z *= -1;
+
+			barbequeGrid.add(horizontalGridBolt1);
+			barbequeGrid.add(horizontalGridBolt2);
+
+			let barbequeFood = new THREE.Group();
+
+			let kebapTexture = textureLoader.load(`https://i.ibb.co/zQzNZbw/Kebap-Texture.png`);
+			let kebapTexturedMaterial = new THREE.MeshPhongMaterial({color: "bisque"});
+			kebapTexturedMaterial.map = kebapTexture;
+
+			let kebapRad = 0.15;
+			let kebapLen = 1.5;
+			geometry = new THREE.CylinderGeometry(kebapRad, kebapRad, kebapLen, 6);
+			
+			let kebapsCoords = [];
+			let kebapsCount = 40;
+
+			for(let i = 0; i < kebapsCount; i++){
+				let kebap1 = new THREE.Mesh(geometry, kebapTexturedMaterial);
+				kebap1.position.y = gridBoltY_pos + wallBoltsRad + kebapRad;
+
+				let potentialX;
+				let potentialZ;
+
+				function isInsideKebap(x, z){
+					for(let y = 0; y < kebapsCoords.length; y++){
+						let kebapCoords = kebapsCoords[y];
+
+						if(Math.abs(x - kebapCoords.x) < kebapLen &&
+						Math.abs(z - kebapCoords.z) < kebapRad * 2){
+							return true;
+						}
+					}
+
+					return false;
+				}
+
+				let attempts = 0;
+				let breakRngGenerator = false;
+				do{
+					potentialX = (Math.random() <= 0.5 ? 1 : -1) * (Math.random() * 10 %  (3.5 - wallsWidth - kebapLen));
+					potentialZ = (Math.random() <= 0.5 ? 1 : -1) * (Math.random() * 10 %  (2.5 - wallsWidth/2 - kebapRad*2));
+					attempts++;
+
+					if(attempts > 10000){
+						breakRngGenerator = true;
+						break;
+					}
+				}
+				while(isInsideKebap(potentialX, potentialZ));
+
+				if(breakRngGenerator) break;
+
+				kebap1.position.x = potentialX;
+				kebap1.position.z = potentialZ;
+
+				kebapsCoords.push({x: potentialX, z: potentialZ});
+
+				kebap1.rotation.z = Math.PI / 2;
+				barbequeFood.add(kebap1);
+			}
+
+			console.log(kebapsCoords.length);
+
+			//Barbeque base
+			let barbequeBase = new THREE.Group();
+			
+			let baseLegHeight = 2;
+			let baseLegWidth = 0.75;
+			geometry = new THREE.BoxGeometry(baseLegWidth, baseLegHeight, baseLegWidth);
+			material = darkGreyMat;
+
+			let baseLeg1 = new THREE.Mesh(geometry, material);
+			baseLeg1.position.y = -wallsWidth/2 - baseLegHeight/2;
+			baseLeg1.position.x = -3.5 + baseLegWidth / 2;
+			baseLeg1.position.z = 2.5 - baseLegWidth / 2;
+
+			let baseLeg2 = baseLeg1.clone();
+			baseLeg2.position.x *= -1;
+
+			let baseLeg3 = baseLeg1.clone();
+			baseLeg3.position.x *= -1;
+			baseLeg3.position.z *= -1;
+
+			let baseLeg4 = baseLeg1.clone();
+			baseLeg4.position.z *= -1;
+
+			barbequeBase.add(baseLeg1);
+			barbequeBase.add(baseLeg2);
+			barbequeBase.add(baseLeg3);
+			barbequeBase.add(baseLeg4);
+
+			//Coals
+			geometry = new THREE.TetrahedronGeometry(0.3, 1);
+
+			let coalTexture = textureLoader.load(`https://i.ibb.co/RST9sMD/coalText.jpg`);
+			let coalTexturedMaterial = new THREE.MeshPhongMaterial({emissive: "red", emissiveIntensity: 3});
+			coalTexturedMaterial.map = coalTexture;
+			coalTexturedMaterial.emissiveMap = coalTexture;
+
+			let coalTemplate = new THREE.Mesh(geometry, coalTexturedMaterial);
+	
+			let coals = new THREE.Group();
+
+			for(let x = -3; x <= 3; x += 0.8){
+				for(let z = -2; z <= 2; z += 0.5){
+					let coal = coalTemplate.clone();
+					coal.position.y = barbequeBottom.position.y + wallsWidth / 2 + 0.2;
+					coal.position.x = x;
+					coal.position.z = z;
+					coals.add(coal);
+				}
+			}
+
+
+			scene.add(barbequeBox);
+			scene.add(barbequeBolts);
+			scene.add(barbequeGrid);
+			scene.add(barbequeFood);
+			scene.add(barbequeBase);
+			scene.add(barbequeLid);
+			scene.add(coals);
+
+			let light = new THREE.PointLight( 'white', 0.4 );
+			light.position.set( 0, 0, 30 );
+			scene.add( light );
+
+			light = new THREE.PointLight( 'white', 0.4 );
+			light.position.set( 0, 30, 0 );
+			scene.add( light );
+
+			light = new THREE.PointLight( 'white', 0.4 );
+			light.position.set( 0, -30, 0 );
+			scene.add( light );
+
+			light = new THREE.PointLight( 'white', 0.4 );
+			light.position.set( 0, 0, -30 );
+			scene.add( light );
+
+			light = new THREE.PointLight( 'white', 0.4 );
+			light.position.set( 30, 0, 0 );
+			scene.add( light );
+
+			light = new THREE.PointLight( 'white', 0.4 );
+			light.position.set( -30, 0, 0 );
+			scene.add( light );
+			
+			let stoppedInitialWait = false;
+			let stopRotating = false;
+
+			function drawFrame()
+			{				
+				if(stoppedInitialWait){
+					setTimeout(() => {
+						stopRotating = true;
+					}, 2000);
+
+					// въртим обекта
+					if(!stopRotating){
+						rotateAroundPivot(barbequeLid, new THREE.Vector3(0, barbequeBackWall.position.y + wallsHeight / 2, 
+						barbequeBackWall.position.z - wallsWidth / 2), 
+						new THREE.Vector3(1, 0, 0), -Math.PI/3 / 60);
+					}					
+				}
+				else{
+					setTimeout(() => {
+						stoppedInitialWait = true;
+					}, 1750);
+
+					rotateAroundPivot(barbequeLid, new THREE.Vector3(0, barbequeBackWall.position.y + wallsHeight / 2, 
+						barbequeBackWall.position.z - wallsWidth / 2), 
+						new THREE.Vector3(1, 0, 0), -Math.PI/3 / 1000);
+				}
+				
+				renderer.render( scene, camera );
+			}
+		</script>
+	</body>
+</html>
