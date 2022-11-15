@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+
+<!-- Име Фамилиев, група X, ф.н. XXXXX -->
+<!-- Росен Колев, група 4, 0MI0800065 -->
+
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<script src="three.min.js"></script>
+		<script src="OrbitControls.js"></script>
+	</head>
+	
+	<body>
+		<script>
+			const FN = '0MI0800065'; // факултетен номер 
+		</script>
+		
+		<script src="init.js"></script>
+			
+		<script>
+		
+			// 1. преименувайте файла на moidom-g-fn.html
+			//    g=номер на група, а fn=факултетен номер
+			//
+			// 2. сменете стойността на константата FN да
+			//    е факултетния номер, за да се генерират
+			//    сцената, земята и контурът на къщата ви
+			//
+			// 3. едва тогава почвайте да строите стените
+			//    и да добавяте исканите обекти по стаите
+			//
+			// 4. в init.js се прави глобален обект scene
+			//    и в него трябва да сложите обектите си!
+			//
+			// 5. кубът по-долу е само за пример как може
+			//    да се слагат обекти, които правят сянка
+			
+			let geometry = new THREE.BoxGeometry( 2, 2, 2 ),
+				material = new THREE.MeshPhongMaterial( {color:'crimson', shininess: 100} );
+				
+			let cube = new THREE.Mesh( geometry, material );
+			cube.position.set( 0, 0, 0 );
+			cube.receiveShadow = true;
+			cube.castShadow = true;
+			
+			scene.add( cube );
+
+			const pi = Math.PI;
+
+			const wallDepth = 0.2;
+
+			let outerWalls = new THREE.Group();	
+
+			function movePath(path, pathCoords) {
+				let initMoveCoords = pathCoords[0];
+				path.moveTo(initMoveCoords.x, initMoveCoords.y);
+
+				for(let i = 1; i < pathCoords.length; i++) {
+					let currentCoords = pathCoords[i]
+					path.lineTo(currentCoords.x, currentCoords.y)
+				}
+			}
+
+			function createShape(pathCoords) {
+				let shape = new THREE.Shape();
+				movePath(shape, pathCoords);
+				return shape;
+			}
+
+			function createPath(pathCoords) {
+				let path = new THREE.Path();
+				movePath(path, pathCoords);
+				return path;
+			}
+
+			function createWall(shapeCoords, positionCoords, rotationCoords, windows) {
+
+				//Windows is an array of arrays of Vector2 which define the paths for the windows inside the wall
+
+				// профил (равнобедренотриъгълен)
+				let shape = createShape(shapeCoords);
+				
+				//The holes for the windows of the wall
+				let windowHoles = [];
+
+				//Create the holes for the windows in the wall
+				for (let i = 0; i < windows.length; i++) {					
+					//Create the windows
+					let windowCoords = windows[i]				
+					let windowHole = createPath(windowCoords)
+					windowHoles.push(windowHole);
+				}
+
+				shape.holes.push(...windowHoles);
+				
+				// създаване на формата на къщата чрез плъзгане
+				var extrudeSettings = { depth: wallDepth, 
+					bevelEnabled: false, 
+					bevelSegments: 2, 
+					steps: 2, 
+					bevelSize: 0.01, 
+					bevelThickness: 0.1,
+					bevelOffset: 0
+				};
+				geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
+
+				// построяване на самия обект
+				let wall = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial({shininess: 140, specular: 'white'}) );
+				wall.position.set(...positionCoords)
+				wall.rotation.set(...rotationCoords)
+
+				return wall
+			}
+
+			let wallSouth = createWall(
+				[
+				new THREE.Vector2(-4, 0),
+				new THREE.Vector2(4, 0),
+				new THREE.Vector2(4, 3),
+				new THREE.Vector2(-4, 3),
+				new THREE.Vector2(-4, 0),
+				],
+				[5 - wallDepth, 0, 0],
+				[0, pi / 2, 0],
+				[
+					[
+					new THREE.Vector2(-3, 1.2),
+					new THREE.Vector2(-2, 1.2),
+					new THREE.Vector2(-2, 1.95),
+					new THREE.Vector2(-3, 1.95),
+					new THREE.Vector2(-3, 1.2),
+					]
+				]
+			);
+
+			outerWalls.add(wallSouth);
+
+			scene.add( outerWalls );
+			
+		</script>
+		
+	</body>
+</html>
+
+
