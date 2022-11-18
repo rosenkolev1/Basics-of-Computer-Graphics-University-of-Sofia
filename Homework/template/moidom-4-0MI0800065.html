@@ -8,6 +8,7 @@
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<script src="three.min.js"></script>
 		<script src="OrbitControls.js"></script>
+		<script src="CSG.js"></script>
 	</head>
 	
 	<body>
@@ -43,13 +44,71 @@
 			cube.receiveShadow = true;
 			cube.castShadow = true;
 			
-			scene.add( cube );
+			// scene.add( cube );
 
+			//Texture loader
+			let textureLoader = new THREE.TextureLoader();
+
+			//Important constants
 			const pi = Math.PI;
 
+			const default_material = new THREE.MeshPhongMaterial({shininess: 140, specular: 'white'});
+			
 			const wallDepth = 0.2;
+			const wallsHeight = 3;
+			
+			const windows_texture = textureLoader.load(`https://i.ibb.co/nkBhdJK/minecraft-Glass-Texture.png`);
+			const windows_material = new THREE.MeshPhongMaterial({color: "lightblue", transparent: true, opacity: 0.6});
+			windows_material.emissiveMap = windows_texture;
+			windows_material.emissive.set("white");
+			windows_material.emissiveIntensity = 1;
+
+			const windows_frame_material = new THREE.MeshPhongMaterial({color: "Khaki"});
+
+			const windows_type_cross = "Cross";
+			const windows_type_single = "Single";
+			const windows_type_clean = "Clean";
+			const windows_types = [windows_type_cross, windows_type_single, windows_type_clean];
+
+			const windows_frame_depth = 0.15
+			const windows_frame_small_dimension = 0.2; 
+
+			const windows_offsetY = 1.2;
+
+			//Door texture 	https://i.ibb.co/NV4qTR8/Door-Texture.png
+			let doorTexture = textureLoader.load(`https://i.ibb.co/NV4qTR8/Door-Texture.png`);
+			let doorsMaterial = new THREE.MeshPhongMaterial({shininess: 140, color: "black"});
+			doorsMaterial.emissive.set("white");
+			doorsMaterial.emissiveMap = doorTexture;
+			doorsMaterial.emissiveIntensity = 1;
+
+			const doorDepthModifier = 3 / 4;
+
+			//Start building the house
 
 			let outerWalls = new THREE.Group();	
+			let innerWalls = new THREE.Group();	
+			let doors = new THREE.Group();	
+
+			//Function to rotate an object around a pivot
+			function rotateAroundPivot(mesh, pivotPoint, axis, angle){
+				let pivotPointCopy = pivotPoint.clone();
+				let pivotDiff = mesh.position.clone().add(pivotPointCopy.multiplyScalar(-1));
+
+				//Change the current object pos to the pivotPoint
+				mesh.position.set(pivotPoint.x, pivotPoint.y, pivotPoint.z);
+
+				//Rotate the object
+				mesh.rotateOnAxis(axis, angle);
+
+				//Rotate the pivotDiff
+				pivotDiff.applyAxisAngle(axis, angle);
+
+				//Move the object back by the pivotDiff
+				let distanceToPivot = pivotDiff.length();
+				let pivotDiffNormalized = pivotDiff.normalize();
+				mesh.position.add(pivotDiffNormalized.multiplyScalar(distanceToPivot));
+			}
 
 			function movePath(path, pathCoords) {
 				let initMoveCoords = pathCoords[0];
@@ -73,28 +132,9 @@
 				return path;
 			}
 
-			function createWall(shapeCoords, positionCoords, rotationCoords, windows) {
-
-				//Windows is an array of arrays of Vector2 which define the paths for the windows inside the wall
-
-				// профил (равнобедренотриъгълен)
-				let shape = createShape(shapeCoords);
-				
-				//The holes for the windows of the wall
-				let windowHoles = [];
-
-				//Create the holes for the windows in the wall
-				for (let i = 0; i < windows.length; i++) {					
-					//Create the windows
-					let windowCoords = windows[i]				
-					let windowHole = createPath(windowCoords)
-					windowHoles.push(windowHole);
-				}
-
-				shape.holes.push(...windowHoles);
-				
+			function createExtrudeMesh(shape, shapeDepth, positionCoords, rotationCoords) {
 				// създаване на формата на къщата чрез плъзгане
-				var extrudeSettings = { depth: wallDepth, 
+				let extrudeSettings = { depth: shapeDepth, 
 					bevelEnabled: false, 
 					bevelSegments: 2, 
 					steps: 2, 
@@ -105,37 +145,743 @@
 				geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
 
 				// построяване на самия обект
-				let wall = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial({shininess: 140, specular: 'white'}) );
-				wall.position.set(...positionCoords)
-				wall.rotation.set(...rotationCoords)
+				let newObj = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial({shininess: 140, specular: 'white'}) );
+				newObj.position.set(...positionCoords)
+				newObj.rotation.set(...rotationCoords)
 
-				return wall
+				return newObj
 			}
 
-			let wallSouth = createWall(
+			function createWindowsOfWall(windowType, windowCoords) {
+				let frame_depth = windows_frame_depth;
+				let frame_hole_depth_delta = (wallDepth - frame_depth) / 2;
+
+				//The frames for the windows
+				let windowFrames = [];
+
+				//The windows boxes
+				let windowBoxes = [];
+
+				//Create the cross border of the window
+				if(windowType == windows_type_cross) {
+					let crossX_Center = (windowCoords[0].x + windowCoords[1].x) / 2;
+					let crossLength = Math.abs((windowCoords[0].x - windowCoords[1].x));
+					let crossY_Center = (windowCoords[0].y + windowCoords[2].y) / 2;
+					let crossHeight = Math.abs((windowCoords[0].y - windowCoords[2].y));
+
+					let cross_small_dimension = windows_frame_small_dimension;
+					
+					let crossShape = createShape(
+						[
+							new THREE.Vector2(crossX_Center - crossLength / 2, crossY_Center - (cross_small_dimension / 2)),
+							new THREE.Vector2(crossX_Center - (cross_small_dimension / 2), crossY_Center - (cross_small_dimension / 2)),
+							new THREE.Vector2(crossX_Center - (cross_small_dimension / 2), crossY_Center - crossLength / 2),
+							new THREE.Vector2(crossX_Center + (cross_small_dimension / 2), crossY_Center - crossLength / 2),
+							new THREE.Vector2(crossX_Center + (cross_small_dimension / 2), crossY_Center - (cross_small_dimension / 2)),
+							new THREE.Vector2(crossX_Center + crossLength / 2, crossY_Center - (cross_small_dimension / 2)),
+							new THREE.Vector2(crossX_Center + crossLength / 2, crossY_Center + (cross_small_dimension / 2)),
+							new THREE.Vector2(crossX_Center + (cross_small_dimension / 2), crossY_Center + (cross_small_dimension / 2)),
+							new THREE.Vector2(crossX_Center + (cross_small_dimension / 2), crossY_Center + (crossLength / 2)),
+							new THREE.Vector2(crossX_Center - (cross_small_dimension / 2), crossY_Center + (crossLength / 2)),
+							new THREE.Vector2(crossX_Center - (cross_small_dimension / 2), crossY_Center + (cross_small_dimension / 2)),
+							new THREE.Vector2(crossX_Center - (crossLength / 2), crossY_Center + (cross_small_dimension / 2)),
+							new THREE.Vector2(crossX_Center - (crossLength / 2), crossY_Center - (cross_small_dimension / 2)),
+						]
+					)
+
+					//Add the crosses
+					let crossObject = createExtrudeMesh(crossShape, frame_depth, [0, 0, frame_hole_depth_delta], [0, 0, 0]);
+					crossObject.material = windows_frame_material;
+					crossObject.castShadow = true;
+					windowFrames.push(crossObject);
+
+					//Add the 4 small window boxes
+					let boxLength = (crossLength - cross_small_dimension) / 2;
+					let boxHeight = (crossHeight - cross_small_dimension) / 2;
+
+					let boxGeometryTemplate = new THREE.BoxGeometry(boxLength, boxHeight, frame_depth);
+
+					let boxMaterialTemplate = windows_material;
+
+					let boxTemplate = new THREE.Mesh(boxGeometryTemplate, boxMaterialTemplate);
+					boxTemplate.position.set(0, 0, frame_depth/2 + frame_hole_depth_delta);
+					boxTemplate.castShadow = true;
+					
+					let boxes_offset_x = ((boxLength / 2) + cross_small_dimension / 2);
+					let boxes_offset_y = ((boxHeight / 2) + cross_small_dimension / 2);
+
+					let box_bottom_left = boxTemplate.clone();
+					box_bottom_left.position.set(crossX_Center - boxes_offset_x, crossY_Center - boxes_offset_y);
+
+					let box_bottom_right = boxTemplate.clone();
+					box_bottom_right.position.set(crossX_Center + boxes_offset_x, crossY_Center - boxes_offset_y);
+
+					let box_top_right = boxTemplate.clone();
+					box_top_right.position.set(crossX_Center + boxes_offset_x, crossY_Center + boxes_offset_y);
+
+					let box_top_left = boxTemplate.clone();
+					box_top_left.position.set(crossX_Center - boxes_offset_x, crossY_Center + boxes_offset_y);
+
+					windowBoxes.push(box_bottom_left);
+					windowBoxes.push(box_bottom_right);
+					windowBoxes.push(box_top_right);
+					windowBoxes.push(box_top_left);
+				}
+				//Create the single border of the window
+				else if(windowType == windows_type_single) {
+
+					//Add the single frame
+					let frameX_Center = (windowCoords[0].x + windowCoords[1].x) / 2;
+					let frameLength = windows_frame_small_dimension;
+					let frameY_Center = (windowCoords[0].y + windowCoords[2].y) / 2;
+					let frameHeight = Math.abs((windowCoords[0].y - windowCoords[2].y));
+
+					let windowLength = Math.abs(windowCoords[0].x - windowCoords[1].x);
+
+					let frameShape = createShape(
+						[
+							new THREE.Vector2(frameX_Center - frameLength / 2, frameY_Center - (frameHeight / 2)),
+							new THREE.Vector2(frameX_Center + frameLength / 2, frameY_Center - (frameHeight / 2)),
+							new THREE.Vector2(frameX_Center + frameLength / 2, frameY_Center + (frameHeight / 2)),
+							new THREE.Vector2(frameX_Center - frameLength / 2, frameY_Center + (frameHeight / 2)),
+							new THREE.Vector2(frameX_Center - frameLength / 2, frameY_Center - (frameHeight / 2)),
+						]
+					)
+
+					//Add the single frame
+					let frameObject = createExtrudeMesh(frameShape, frame_depth, [0, 0, frame_hole_depth_delta], [0, 0, 0]);
+					frameObject.material = windows_frame_material;
+					frameObject.castShadow = true;
+					windowFrames.push(frameObject);
+
+					//Add the 2 windows boxes
+					let boxLength = (windowLength - frameLength) / 2;
+					let boxHeight = frameHeight
+
+					let boxGeometryTemplate = new THREE.BoxGeometry(boxLength, boxHeight, frame_depth);
+
+					let boxMaterialTemplate = windows_material;
+
+					let boxTemplate = new THREE.Mesh(boxGeometryTemplate, boxMaterialTemplate);
+					boxTemplate.position.set(0, 0, frame_depth / 2 + frame_hole_depth_delta);
+					boxTemplate.castShadow = true;
+					
+					let boxes_offset_x = boxLength / 2 + frameLength / 2;
+
+					let box_left = boxTemplate.clone();
+					box_left.position.set(frameX_Center - boxes_offset_x, frameY_Center);
+
+					let box_right = boxTemplate.clone();
+					box_right.position.set(frameX_Center + boxes_offset_x, frameY_Center);
+
+					windowBoxes.push(box_left);
+					windowBoxes.push(box_right);
+				}
+
+				//Create the single border of the window
+				else if(windowType == windows_type_clean) {
+					//Add the windows box
+					let frameX_Center = (windowCoords[0].x + windowCoords[1].x) / 2;
+					let frameY_Center = (windowCoords[0].y + windowCoords[2].y) / 2;
+
+					let boxLength = Math.abs(windowCoords[0].x - windowCoords[1].x);
+					let boxHeight = Math.abs(windowCoords[0].y - windowCoords[2].y);
+
+					let boxGeometryTemplate = new THREE.BoxGeometry(boxLength, boxHeight, frame_depth);
+
+					let boxMaterialTemplate = windows_material;
+
+					let windowBox = new THREE.Mesh(boxGeometryTemplate, boxMaterialTemplate);
+					windowBox.position.set(frameX_Center, frameY_Center, frame_depth / 2 + 0.025)
+					windowBox.castShadow = true;
+
+					windowBoxes.push(windowBox);
+				}
+
+				return {windowFrames: windowFrames, windowBoxes: windowBoxes};
+			}
+
+			function createWallWithDepth(shapeCoords, positionCoords, rotationCoords, wallDepth,
+			windows = 0, windowsType = "") {
+
+				//Windows is an array of arrays of Vector2 which define the paths for the windows inside the wall
+
+				// профил (равнобедренотриъгълен)
+				let shape = createShape(shapeCoords);
+				
+				//The holes for the windows of the wall
+				let windowHoles = [];
+				
+				//The borders for the windows
+				let windowFrames = [];
+
+				//The windows boxes
+				let windowBoxes = [];
+
+				//Create the holes for the windows in the wall
+				for (let i = 0; i < windows.length; i++) {		
+
+					//Create the windows
+					let windowCoords = windows[i]				
+					let windowHole = createPath(windowCoords)
+					windowHoles.push(windowHole);
+
+					let windowObject = createWindowsOfWall(windowsType, windowCoords);
+					windowFrames.push(...windowObject["windowFrames"]);
+					windowBoxes.push(...windowObject["windowBoxes"]);					
+				}
+
+				shape.holes.push(...windowHoles);
+				
+				// създаване на формата на къщата чрез плъзгане
+				let extrudeSettings = { depth: wallDepth, 
+					bevelEnabled: false, 
+					bevelSegments: 2, 
+					steps: 2, 
+					bevelSize: 0.01, 
+					bevelThickness: 0.1,
+					bevelOffset: 0
+				};
+				geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
+
+				// построяване на самия обект
+				let wall = new THREE.Mesh( geometry, default_material );
+				wall.castShadow = true;
+
+				let wallWithWindows = new THREE.Group();
+				wallWithWindows.add(wall);
+
+				//Add the crosses
+				for(let i = 0; i < windowFrames.length; i++) {
+					wallWithWindows.add(windowFrames[i]);
+				}
+
+				//Add the boxes
+				for(let i = 0; i < windowBoxes.length; i++) {
+					wallWithWindows.add(windowBoxes[i]);
+				}
+
+				wallWithWindows.position.set(...positionCoords);
+				wallWithWindows.rotation.set(...rotationCoords);
+
+				return wallWithWindows;
+			}
+
+			function createWall(shapeCoords, positionCoords, rotationCoords, 
+			windows = 0, windowsType = "") {
+
+				return createWallWithDepth(shapeCoords, positionCoords, rotationCoords, wallDepth,
+					windows, windowsType);
+			}
+
+			function createWall_RectangularWithWindows(
+				wallLength, wallHeight, positionCoords, rotationCoords, 
+				windowsCount = 0, windowsType = "", windowLength = 0, windowHeight = 0, windowsOffsetX = 0, windowsOffsetY = 0,
+				windowsOffsetX_OtherSide = windowsOffsetX) {
+
+					//Create the windows
+					windows = [];
+					windowsTotalLength = wallLength - windowsOffsetX - windowsOffsetX_OtherSide;
+					windowsSpacing = windowsCount > 1 ? 
+												(windowsTotalLength - windowLength * windowsCount) / (windowsCount - 1)
+												: 0;
+					windowY_Bottom = windowsOffsetY;
+					windowLengthWithSpacing = (windowLength + windowsSpacing);
+					
+					for(let i = 0; i < windowsCount; i++) {
+						let windowX = (-wallLength / 2) + windowsOffsetX + windowLength / 2 + i * windowLengthWithSpacing;
+						
+						//Create window holes
+						windows.push(
+							[
+							new THREE.Vector2(windowX - windowLength / 2, windowY_Bottom),
+							new THREE.Vector2(windowX + windowLength / 2, windowY_Bottom),
+							new THREE.Vector2(windowX + windowLength / 2, windowY_Bottom + windowHeight),
+							new THREE.Vector2(windowX - windowLength / 2, windowY_Bottom + windowHeight),
+							new THREE.Vector2(windowX - windowLength / 2, windowY_Bottom),
+							]
+						)
+					}
+
+					return createWall(
+						[
+						new THREE.Vector2(-wallLength / 2, 0),
+						new THREE.Vector2(wallLength / 2, 0),
+						new THREE.Vector2(wallLength / 2, wallHeight),
+						new THREE.Vector2(-wallLength / 2, wallHeight),
+						new THREE.Vector2(-wallLength / 2, 0),
+						],
+						[...positionCoords],
+						[...rotationCoords],
+						windows, windowsType
+					);
+				}
+				
+			let outer_wallSouth_Left = createWall_RectangularWithWindows(
+				3, wallsHeight, [5 - wallDepth, 0, 2.5], [0, pi / 2, 0],
+				1, windows_type_single, 1, 1, 0.5, windows_offsetY
+			)
+
+			let outer_wallSouth_Right = createWall_RectangularWithWindows(
+				4, wallsHeight, [5 - wallDepth, 0, -2], [0, pi / 2, 0],
+				1, windows_type_single, 1, 1, 2, windows_offsetY
+			)
+
+			let outer_wallSouth_AboveDoor = createWall_RectangularWithWindows(
+				1, 1, [5 - wallDepth, 2, 0.5], [0, pi / 2, 0],
+			)
+
+			let outer_wallSouth_West_Corner = createWall_RectangularWithWindows(
+				1, wallsHeight, [5 - 0.5, 0, 4 - wallDepth], [0, 0, 0],
+			)
+
+			let outer_wallSouth_AfterCorner = createWall_RectangularWithWindows(
+				3 + wallDepth, wallsHeight, [4 - wallDepth, 0, 5.5 - wallDepth / 2], [0,  pi / 2, 0],
+			)
+
+			let outer_wallSouth_West = createWall_RectangularWithWindows(
+				6, wallsHeight, [1, 0, 7 - wallDepth], [0,  0, 0],
+				2, windows_type_single, 1, 1, 1, windows_offsetY
+			)
+
+			let outer_wallNorth_West_First = createWall_RectangularWithWindows(
+				3, wallsHeight, [-2, 0, 5.5], [0,  pi / 2, 0],
+			)
+			
+			let outer_wallNorth_West_Second = createWall_RectangularWithWindows(
+				6 + wallDepth, wallsHeight, [-5 + wallDepth / 2, 0, 4 - wallDepth], [0,  0, 0],
+				1, windows_type_single, 1, 1, 1.5, windows_offsetY
+			)
+
+			let outer_wallNorth = createWall_RectangularWithWindows(
+				8, wallsHeight, [-8, 0, 0], [0,  pi / 2, 0],
+				1, windows_type_single, 1, 1, 1.5, windows_offsetY
+			)
+
+			let outer_wallEast = createWall_RectangularWithWindows(
+				13, wallsHeight, [-1.5, 0, -4], [0, 0, 0],
+				2, windows_type_single, 1, 1, 7.5, windows_offsetY, 1.3
+			)		
+
+			outerWalls.add(outer_wallSouth_Left);
+			outerWalls.add(outer_wallSouth_Right);
+			outerWalls.add(outer_wallSouth_AboveDoor);
+
+			outerWalls.add(outer_wallSouth_West_Corner);
+			outerWalls.add(outer_wallSouth_AfterCorner);
+			outerWalls.add(outer_wallSouth_West);
+
+			outerWalls.add(outer_wallNorth_West_First);
+			outerWalls.add(outer_wallNorth_West_Second);
+			outerWalls.add(outer_wallNorth);
+
+			outerWalls.add(outer_wallEast);
+			
+			let inner_wall1 = createWall_RectangularWithWindows(
+				5 - wallDepth, wallsHeight, [(5 - wallDepth)/2, 0, 2], [0, 0, 0],
+			)
+
+			// let inner_wall_slanted_part_1 = createWallWithDepth(
+			// 	[
+			// 		new THREE.Vector2(-wallDepth, -wallDepth),
+			// 		new THREE.Vector2(-wallDepth, 0),
+			// 		new THREE.Vector2(0, 0),
+			// 		new THREE.Vector2(0 - 1.8 - wallDepth, 1.6 + wallDepth),
+			// 		new THREE.Vector2(0 - 1.8 - wallDepth, 1.6),
+			// 		new THREE.Vector2(0 - 1.8 - wallDepth * 2, 1.6),
+			// 		new THREE.Vector2(-wallDepth, -wallDepth),
+			// 	],
+			// 	[wallDepth, 3, 2 + wallDepth],
+			// 	[pi / 2, 0, 0],
+			// 	wallsHeight
+			// )	
+			
+			let inner_wall_slanted_length = 2.56125;
+			let inner_wall_slanted_part_1_spanRegulator = 0.30478282088;
+			let inner_wall_slanted_topSlant_offsetY = Math.sqrt((wallDepth * wallDepth*2)*81/(181));
+			let inner_wall_slanted_topSlant_offsetX = inner_wall_slanted_topSlant_offsetY * 10 / 9;
+
+			let inner_wall_slanted_part_1 = createWallWithDepth(
 				[
-				new THREE.Vector2(-4, 0),
-				new THREE.Vector2(4, 0),
-				new THREE.Vector2(4, 3),
-				new THREE.Vector2(-4, 3),
-				new THREE.Vector2(-4, 0),
+					new THREE.Vector2(-wallDepth, -wallDepth),
+					new THREE.Vector2(-wallDepth, 0),
+					new THREE.Vector2(0, 0),
+					new THREE.Vector2((0 - 1.8 - wallDepth) * inner_wall_slanted_part_1_spanRegulator,
+					 	(1.6 + wallDepth) * inner_wall_slanted_part_1_spanRegulator),
+					new THREE.Vector2((0 - 1.8 - wallDepth) * inner_wall_slanted_part_1_spanRegulator - inner_wall_slanted_topSlant_offsetX,
+					(1.6 + wallDepth) * inner_wall_slanted_part_1_spanRegulator - inner_wall_slanted_topSlant_offsetY),
+					new THREE.Vector2(-wallDepth, -wallDepth),
 				],
-				[5 - wallDepth, 0, 0],
-				[0, pi / 2, 0],
-				[
-					[
-					new THREE.Vector2(-3, 1.2),
-					new THREE.Vector2(-2, 1.2),
-					new THREE.Vector2(-2, 1.95),
-					new THREE.Vector2(-3, 1.95),
-					new THREE.Vector2(-3, 1.2),
-					]
-				]
+				[wallDepth, 3, 2 + wallDepth],
+				[pi / 2, 0, 0],
+				wallsHeight
 			);
 
-			outerWalls.add(wallSouth);
+			let inner_wall_slanted_part_2_spanRegulator = 1 - inner_wall_slanted_part_1_spanRegulator;
 
-			scene.add( outerWalls );
+			let inner_wall_slanted_part_2 = createWallWithDepth(
+				[
+					new THREE.Vector2((0 - 1.8 - wallDepth) * inner_wall_slanted_part_2_spanRegulator - inner_wall_slanted_topSlant_offsetX,
+					(1.6 + wallDepth) * inner_wall_slanted_part_2_spanRegulator - inner_wall_slanted_topSlant_offsetY),
+					new THREE.Vector2((0 - 1.8 - wallDepth) * inner_wall_slanted_part_2_spanRegulator,
+					 	(1.6 + wallDepth) * inner_wall_slanted_part_2_spanRegulator),
+					new THREE.Vector2(0 - 1.8 - wallDepth, 1.6 + wallDepth),
+					new THREE.Vector2(0 - 1.8 - wallDepth, 1.6),
+					new THREE.Vector2(0 - 1.8 - wallDepth * 2, 1.6),
+					new THREE.Vector2((0 - 1.8 - wallDepth) * inner_wall_slanted_part_2_spanRegulator - inner_wall_slanted_topSlant_offsetX,
+					(1.6 + wallDepth) * inner_wall_slanted_part_2_spanRegulator - inner_wall_slanted_topSlant_offsetY)
+				],
+				[wallDepth, 3, 2 + wallDepth],
+				[pi / 2, 0, 0],
+				wallsHeight
+			);
+			
+			let inner_wall_slanted_part_3 = createWallWithDepth(
+				[
+					new THREE.Vector2((0 - 1.8 - wallDepth) * inner_wall_slanted_part_2_spanRegulator - inner_wall_slanted_topSlant_offsetX,
+						(1.6 + wallDepth) * inner_wall_slanted_part_2_spanRegulator - inner_wall_slanted_topSlant_offsetY),
+					new THREE.Vector2((0 - 1.8 - wallDepth) * inner_wall_slanted_part_2_spanRegulator,
+					 	(1.6 + wallDepth) * inner_wall_slanted_part_2_spanRegulator),
+					new THREE.Vector2((0 - 1.8 - wallDepth) * inner_wall_slanted_part_1_spanRegulator,
+						(1.6 + wallDepth) * inner_wall_slanted_part_1_spanRegulator),
+					new THREE.Vector2((0 - 1.8 - wallDepth) * inner_wall_slanted_part_1_spanRegulator - inner_wall_slanted_topSlant_offsetX,
+						(1.6 + wallDepth) * inner_wall_slanted_part_1_spanRegulator - inner_wall_slanted_topSlant_offsetY),
+					new THREE.Vector2((0 - 1.8 - wallDepth) * inner_wall_slanted_part_2_spanRegulator - inner_wall_slanted_topSlant_offsetX,
+						(1.6 + wallDepth) * inner_wall_slanted_part_2_spanRegulator - inner_wall_slanted_topSlant_offsetY),
+				],
+				[wallDepth, 3, 2 + wallDepth],
+				[pi / 2, 0, 0],
+				1
+			);
+			
+			let inner_wall_2 = createWall_RectangularWithWindows(
+				2.5, wallsHeight, [2.75, 0, 4 - wallDepth], [0, 0, 0],
+			)
+
+			let inner_wall_3_part_left = createWall_RectangularWithWindows(
+				1.5, wallsHeight, [-4, 0, 3.25], [0, pi / 2, 0],
+			)
+
+			let inner_wall_3_part_right = createWall_RectangularWithWindows(
+				1.5, wallsHeight, [-4, 0, 0.75], [0, pi / 2, 0],
+			)
+
+			let inner_wall_3_part_upper = createWall_RectangularWithWindows(
+				1, 1, [-4, 2, 2], [0, pi / 2, 0],
+			)
+
+			let inner_wall_4_part_right = createWall_RectangularWithWindows(
+				1.8 , wallsHeight, [-4.9, 0, 0], [0, 0, 0],
+			)
+
+			let inner_wall_4_part_left = createWall_RectangularWithWindows(
+				1 , wallsHeight, [-4.9 - 0.9 - 1.5, 0, 0], [0, 0, 0],
+			)
+
+			let inner_wall_4_part_upper = createWall_RectangularWithWindows(
+				1 , 1, [-6.3, 2, 0], [0, 0, 0],
+			)
+
+			let inner_wall_5 = createWall_RectangularWithWindows(
+				4 , wallsHeight, [-4.9 - 0.9 + 0.4, 0, -2], [0, pi / 2, 0],
+			)
+
+			let inner_wall_6 = createWall_RectangularWithWindows(
+				3.4 , wallsHeight, [3.1, 0, -1], [0, 0, 0],
+			)
+
+			let inner_wall_7_left = createWall_RectangularWithWindows(
+				0.4 , wallsHeight, [1.4, 0, -3.6], [0, pi / 2, 0],
+			)
+
+			let inner_wall_7_right = createWall_RectangularWithWindows(
+				1.4 , wallsHeight, [1.4, 0, -1.7], [0, pi / 2, 0],
+			)
+
+			let inner_wall_7_upper = createWall_RectangularWithWindows(
+				1 , 1, [1.4, 2, -2.9], [0, pi / 2, 0],
+			)
+
+			let inner_wall_8 = createWall_RectangularWithWindows(
+				3.8, wallsHeight, [-3.3, 0, -1.6], [0, 0, 0],
+			)
+
+			let inner_wall_9_left = createWall_RectangularWithWindows(
+				1, wallsHeight, [-1.6, 0, -0.5 - 0.7 - wallDepth - 0.5], [0, pi / 2, 0],
+			)
+
+			let inner_wall_9_right = createWall_RectangularWithWindows(
+				0.4, wallsHeight, [-1.6, 0, -0.5 - 0.7 - wallDepth - 2 - 0.2], [0, pi / 2, 0],
+			)
+
+			let inner_wall_9_upper = createWall_RectangularWithWindows(
+				1, 1, [-1.6, 2, -2.9], [0, pi / 2, 0],
+			)
+
+			let inner_wall_10 = createWall_RectangularWithWindows(
+				1.4, wallsHeight, [-3.3, 0, 0.6], [0, 0, 0],
+			)
+
+			let inner_wall_11_left = createWall_RectangularWithWindows(
+				0.6, wallsHeight, [-2.8, 0, 0.3], [0, pi / 2, 0],
+			)
+
+			let inner_wall_11_right = createWall_RectangularWithWindows(
+				0.4, wallsHeight, [-2.8, 0, -1.2], [0, pi / 2, 0],
+			)
+
+			let inner_wall_11_upper = createWall_RectangularWithWindows(
+				1, 1, [-2.8, 2, -0.5], [0, pi / 2, 0],
+			)
+
+			innerWalls.add(inner_wall1);
+			innerWalls.add(inner_wall_slanted_part_1);
+			innerWalls.add(inner_wall_slanted_part_2);
+			innerWalls.add(inner_wall_slanted_part_3);
+			innerWalls.add(inner_wall_2);
+			innerWalls.add(inner_wall_3_part_left);
+			innerWalls.add(inner_wall_3_part_right);
+			innerWalls.add(inner_wall_3_part_upper);
+			innerWalls.add(inner_wall_4_part_right);
+			innerWalls.add(inner_wall_4_part_left);
+			innerWalls.add(inner_wall_4_part_upper);
+			innerWalls.add(inner_wall_5);
+			innerWalls.add(inner_wall_6);
+			innerWalls.add(inner_wall_7_left);
+			innerWalls.add(inner_wall_7_right);
+			innerWalls.add(inner_wall_7_upper);
+			innerWalls.add(inner_wall_8);
+			innerWalls.add(inner_wall_9_left);
+			innerWalls.add(inner_wall_9_right);
+			innerWalls.add(inner_wall_9_upper);
+			innerWalls.add(inner_wall_10);
+			innerWalls.add(inner_wall_11_left);
+			innerWalls.add(inner_wall_11_right);
+			innerWalls.add(inner_wall_11_upper);
+
+			
+
+			//Add the doors
+			let doorTemplate = new THREE.Mesh(
+				new THREE.BoxGeometry(1, 2, wallDepth * doorDepthModifier),
+				doorsMaterial
+			);
+			doorTemplate.castShadow = true;
+
+			let thickDoorTemplate = new THREE.Mesh(
+				new THREE.BoxGeometry(1.1, 2, Math.sqrt(wallDepth * wallDepth + wallDepth * wallDepth) * doorDepthModifier),
+				doorsMaterial
+			)
+			thickDoorTemplate.castShadow = true;
+
+			function createDoor(template, positionCoords, rotationCoords) {
+				let door = template.clone();
+				door.position.set(...positionCoords);
+				door.rotation.set(...rotationCoords);
+
+				return door;
+			}
+
+			doors.add(createDoor(doorTemplate, [5 - wallDepth / 2, 1, 0.5], [0, pi / 2, 0]));
+			doors.add(createDoor(thickDoorTemplate, [-0.8 - wallDepth / 2, 1, 3.1 - wallDepth /2 ], [0, Math.atan(1.8 / 2), 0]));
+			doors.add(createDoor(doorTemplate, [-4 + wallDepth / 2, 1, 2 ], [0, pi / 2, 0]));
+			doors.add(createDoor(doorTemplate, [-6.4 + wallDepth / 2, 1, wallDepth / 2 ], [0, 0, 0]));
+			doors.add(createDoor(doorTemplate, [-2.6 - wallDepth / 2, 1, -0.5 ], [0, pi / 2, 0]));
+			doors.add(createDoor(doorTemplate, [-1.4 - wallDepth / 2, 1, -2.9 ], [0, pi / 2, 0]));
+			doors.add(createDoor(doorTemplate, [1.4 + wallDepth / 2, 1, -2.9 ], [0, pi / 2, 0]));
+
+			//Add the Iron and the bathtub
+			
+			let bathtubOuterShape = new THREE.Shape();
+
+			let bathtubEdgeRad = 0.2;
+			let bathtubLength = 2.2;
+			let bathtubWidth = 0.8;
+			let bathtubHeight = 0.6;
+
+			bathtubOuterShape.moveTo(-bathtubLength / 2, bathtubWidth / 2);
+			bathtubOuterShape.arc(0, 0, 0.2, pi / 2, pi, );
+			bathtubOuterShape.lineTo(-bathtubLength / 2 - bathtubEdgeRad, -bathtubWidth / 2);
+			bathtubOuterShape.arc(0.2, 0, 0.2, -pi, - pi / 2, );
+			bathtubOuterShape.lineTo(bathtubLength / 2, -bathtubWidth / 2 - bathtubEdgeRad);
+			bathtubOuterShape.arc(0, 0.2, 0.2, -pi / 2, 0, );
+			bathtubOuterShape.lineTo(bathtubLength / 2 + bathtubEdgeRad, bathtubWidth / 2);
+			bathtubOuterShape.arc(-0.2, 0, 0.2, 0, pi / 2, );
+			bathtubOuterShape.lineTo(- bathtubLength / 2, bathtubWidth / 2 + bathtubEdgeRad);
+
+			let extrudeSettings = { depth: bathtubHeight, 
+				bevelEnabled: false, 
+				bevelSegments: 2, 
+				steps: 2, 
+				bevelSize: 0.01, 
+				bevelThickness: 0.1,
+				bevelOffset: 0
+			};
+			let bathtubOuterShapeGeometry = new THREE.ExtrudeGeometry( bathtubOuterShape, extrudeSettings );
+			let bathtubOuterShapeMesh = new THREE.Mesh(bathtubOuterShapeGeometry, default_material);
+			bathtubOuterShapeMesh.position.set(0, bathtubHeight, 0);
+			bathtubOuterShapeMesh.rotation.set(pi / 2, 0, 0);
+
+			let bathtubInnerShapeMesh = bathtubOuterShapeMesh.clone();
+			bathtubInnerShapeMesh.scale.set(0.88, 0.8, 1);
+			// bathtubInnerShapeMesh.material.color.set("red");
+			bathtubInnerShapeMesh.position.set(0, bathtubHeight + 0.1, 0);
+
+			let csg = new CSG();
+
+			csg.subtract([bathtubOuterShapeMesh, bathtubInnerShapeMesh]);
+			let bathtubBase = csg.toMesh();
+
+			let bathtubInnerShapeMesh_smaller = bathtubInnerShapeMesh.clone();
+			bathtubInnerShapeMesh_smaller.scale.set(0.3, 0.8, 5/6);
+			bathtubInnerShapeMesh_smaller.position.y -= 0.1 - 1;
+			bathtubInnerShapeMesh_smaller.position.x = - bathtubLength / 3 - 0.2;
+		
+			let bathtubSlantCylinder = new THREE.Mesh(
+				new THREE.CylinderGeometry(0.6, 0.6, 10, 32, 1),
+				default_material
+			);
+			bathtubSlantCylinder.rotation.set(pi / 2, 0, 0);
+			bathtubSlantCylinder.position.set(bathtubInnerShapeMesh_smaller.position.x + 0.4, 
+				bathtubInnerShapeMesh_smaller.position.y,
+				bathtubInnerShapeMesh_smaller.position.z);
+
+			csg = new CSG();
+
+			csg.subtract([bathtubInnerShapeMesh_smaller, bathtubSlantCylinder]);
+
+			let bathtubSlant = csg.toMesh();
+			bathtubSlant.position.set(0.4, -bathtubHeight - 0.4, 0)
+			bathtubSlant.scale.set(1.2, 1, 1);
+
+			let bathtub = new THREE.Group();
+			bathtub.add(bathtubBase);
+			bathtub.add(bathtubSlant);
+
+			//Add kran4eta to the bathtub
+			let bathtubWaterTubeGeom = new THREE.CylinderGeometry(0.05, 0.1, 0.2, 32);
+			let bathtubWaterTube = new THREE.Mesh(bathtubWaterTubeGeom, default_material);
+			bathtubWaterTube.position.set(-bathtubLength / 2, bathtubHeight + 0.1, 0.2);
+
+			let bathtubWaterTube_2 = bathtubWaterTube.clone();
+			bathtubWaterTube_2.position.z *= -1;
+
+			let bathtubWaterTube_connecter = new THREE.Mesh(
+				new THREE.TorusGeometry(0.2, 0.051, 16, 32, pi),
+				default_material
+			);
+			bathtubWaterTube_connecter.position.set(-bathtubLength / 2, bathtubHeight + 0.1 + 0.2 / 2, 0)
+			bathtubWaterTube_connecter.rotation.set(0, pi / 2, 0);
+
+			let bathtubWaterTube_left_length = 0.15;
+			let bathtubWaterTube_left_rad = 0.045;
+			let bathtubWaterTube_left = new THREE.Mesh(
+				new THREE.CylinderGeometry(bathtubWaterTube_left_rad, bathtubWaterTube_left_rad, bathtubWaterTube_left_length, 32),
+				default_material
+			);
+
+			let bathtubWaterTube_left_y_offset = 0.1;
+			let bathtubWaterTube_left_z_offset = Math.sqrt(0.2 * 0.2 - bathtubWaterTube_left_y_offset * bathtubWaterTube_left_y_offset);
+
+			bathtubWaterTube_left.position.set(bathtubWaterTube_connecter.position.x + bathtubWaterTube_left_length / 2,
+				bathtubWaterTube_connecter.position.y + bathtubWaterTube_left_y_offset, bathtubWaterTube_connecter.position.z + bathtubWaterTube_left_z_offset);
+			bathtubWaterTube_left.rotation.set(0, 0, pi / 2);
+
+			let bathtubWaterTube_right = bathtubWaterTube_left.clone();
+			bathtubWaterTube_right.position.z *= -1;
+
+			let bathtubWaterTube_valve = new THREE.Group();
+
+			let bathtubWaterTube_valve_torus_tubes_rad = 0.005; 
+
+			let bathtubWaterTube_valve_torus = new THREE.Mesh(
+				new THREE.TorusGeometry(bathtubWaterTube_left_rad - bathtubWaterTube_valve_torus_tubes_rad,
+					bathtubWaterTube_valve_torus_tubes_rad, 16, 32),
+				default_material
+			);
+
+			bathtubWaterTube_valve_torus.position.set(bathtubWaterTube_left.position.x + 
+				bathtubWaterTube_left_length / 2 + bathtubWaterTube_valve_torus_tubes_rad / 2,
+				bathtubWaterTube_left.position.y, bathtubWaterTube_left.position.z);
+			bathtubWaterTube_valve_torus.rotation.set(0, pi / 2, 0);
+
+			let bathtubWaterTube_valve_cueTip_cylinder_length = bathtubWaterTube_left_rad * 4;
+			let bathtubWaterTube_valve_cueTip_cylinder_rad = 0.003;
+			let bathtubWaterTube_valve_cueTip_cylinder_tiltAngle = pi / 4;
+			
+			let bathtubWaterTube_valve_cueTip_cylinder = new THREE.Mesh(
+				new THREE.CylinderGeometry(bathtubWaterTube_valve_cueTip_cylinder_rad, bathtubWaterTube_valve_cueTip_cylinder_rad,
+					bathtubWaterTube_valve_cueTip_cylinder_length, 32),
+				default_material
+			);
+
+			bathtubWaterTube_valve_cueTip_cylinder.position.set(
+				bathtubWaterTube_valve_torus.position.x + bathtubWaterTube_valve_torus_tubes_rad / 4,
+				bathtubWaterTube_valve_torus.position.y,
+				bathtubWaterTube_valve_torus.position.z
+			);
+			bathtubWaterTube_valve_cueTip_cylinder.rotation.set(bathtubWaterTube_valve_cueTip_cylinder_tiltAngle, 0, 0);
+
+			let bathtubWaterTube_valve_cueTip_sphere_first = new THREE.Mesh(
+				new THREE.SphereGeometry(bathtubWaterTube_valve_cueTip_cylinder_rad * 4,
+					32, 32),
+					default_material
+			);
+			bathtubWaterTube_valve_cueTip_sphere_first.position.set(
+				bathtubWaterTube_valve_cueTip_cylinder.position.x,
+				bathtubWaterTube_valve_cueTip_cylinder.position.y - Math.cos(bathtubWaterTube_valve_cueTip_cylinder_tiltAngle) * bathtubWaterTube_valve_cueTip_cylinder_length / 2,
+				bathtubWaterTube_valve_cueTip_cylinder.position.z - Math.cos(bathtubWaterTube_valve_cueTip_cylinder_tiltAngle) * bathtubWaterTube_valve_cueTip_cylinder_length / 2
+			)
+
+			let bathtubWaterTube_valve_cueTip_sphere_second = bathtubWaterTube_valve_cueTip_sphere_first.clone();
+			bathtubWaterTube_valve_cueTip_sphere_second.position.set(
+				bathtubWaterTube_valve_cueTip_cylinder.position.x,
+				bathtubWaterTube_valve_cueTip_cylinder.position.y + Math.cos(bathtubWaterTube_valve_cueTip_cylinder_tiltAngle) * bathtubWaterTube_valve_cueTip_cylinder_length / 2,
+				bathtubWaterTube_valve_cueTip_cylinder.position.z + Math.cos(bathtubWaterTube_valve_cueTip_cylinder_tiltAngle) * bathtubWaterTube_valve_cueTip_cylinder_length / 2
+			)
+
+			let bathtubWaterTube_valve_cueTip = new THREE.Group();
+			bathtubWaterTube_valve_cueTip.add(bathtubWaterTube_valve_cueTip_cylinder);
+			bathtubWaterTube_valve_cueTip.add(bathtubWaterTube_valve_cueTip_sphere_first);
+			bathtubWaterTube_valve_cueTip.add(bathtubWaterTube_valve_cueTip_sphere_second);
+
+			let bathtubWaterTube_valve_cueTip_otherDir = bathtubWaterTube_valve_cueTip.clone();
+			rotateAroundPivot(bathtubWaterTube_valve_cueTip_otherDir, 
+				bathtubWaterTube_valve_cueTip_cylinder.position, 
+				new THREE.Vector3(-1, 0, 0),
+				-bathtubWaterTube_valve_cueTip_cylinder_tiltAngle*2);
+			// bathtubWaterTube_valve_cueTip_otherDir.rotation.set(
+			// 	0, 0, 0
+			// );
+
+			let bathtubWaterTube_valve_template = new THREE.Group();
+			bathtubWaterTube_valve_template.add(bathtubWaterTube_valve_torus);
+			bathtubWaterTube_valve_template.add(bathtubWaterTube_valve_cueTip);
+			bathtubWaterTube_valve_template.add(bathtubWaterTube_valve_cueTip_otherDir);
+
+			let bathtubWaterTube_valve_left = bathtubWaterTube_valve_template.clone();
+			let bathtubWaterTube_valve_right = bathtubWaterTube_valve_template.clone();
+			bathtubWaterTube_valve_right.scale.set(1, 1, -1);
+
+			// scene.add(bathtubBase);
+			// scene.add(bathtubSlant);
+			scene.add(bathtub);
+			scene.add(bathtubWaterTube);
+			scene.add(bathtubWaterTube_2);
+			scene.add(bathtubWaterTube_connecter);
+			scene.add(bathtubWaterTube_left);
+			scene.add(bathtubWaterTube_right);
+			scene.add(bathtubWaterTube_valve_left);
+			scene.add(bathtubWaterTube_valve_right);
+			// scene.add(bathtubWaterTube_valve_torus);
+			// scene.add(bathtubWaterTube_valve_cueTip);
+			// scene.add(bathtubWaterTube_valve_cueTip_otherDir);
+			// scene.add(bathtubWaterTube_valve_cueTip_cylinder);
+			// scene.add(bathtubWaterTube_valve_cueTip_sphere_first);
+			// scene.add(bathtubWaterTube_valve_cueTip_sphere_second);
+			// scene.add(innerWalls);
+			// scene.add( outerWalls );
+			// scene.add(doors);
 			
 		</script>
 		
