@@ -33,8 +33,8 @@ var scene = new THREE.Scene();
 // камера и гледна точка
 
 var camera = new THREE.PerspectiveCamera( 60, 1, 0.01, 200 );
-	// camera.position.set( 30, 60, 60 );
-	camera.position.set( 2, 6, 2 );
+	camera.position.set( 30, 60, 60 );
+	// camera.position.set( 2, 6, 2 );
 	// camera.position.set( 1, 2, 0.8 );
 	camera.lookAt( scene.position );
 

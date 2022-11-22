@@ -36,13 +36,13 @@
 			// 5. кубът по-долу е само за пример как може
 			//    да се слагат обекти, които правят сянка
 			
-			let geometry = new THREE.BoxGeometry( 2, 2, 2 ),
-				material = new THREE.MeshPhongMaterial( {color:'crimson', shininess: 100} );
+			// let geometry = new THREE.BoxGeometry( 2, 2, 2 ),
+			// 	material = new THREE.MeshPhongMaterial( {color:'crimson', shininess: 100} );
 				
-			let cube = new THREE.Mesh( geometry, material );
-			cube.position.set( 0, 0, 0 );
-			cube.receiveShadow = true;
-			cube.castShadow = true;
+			// let cube = new THREE.Mesh( geometry, material );
+			// cube.position.set( 0, 0, 0 );
+			// cube.receiveShadow = true;
+			// cube.castShadow = true;
 			
 			// scene.add( cube );
 
@@ -56,6 +56,7 @@
 			
 			const wallDepth = 0.2;
 			const wallsHeight = 3;
+			const wall_Material = new THREE.MeshPhongMaterial({color: "BlanchedAlmond"});
 			
 			const windows_texture = textureLoader.load(`https://i.ibb.co/nkBhdJK/minecraft-Glass-Texture.png`);
 			const windows_material = new THREE.MeshPhongMaterial({color: "lightblue", transparent: true, opacity: 0.6});
@@ -63,7 +64,7 @@
 			windows_material.emissive.set("white");
 			windows_material.emissiveIntensity = 1;
 
-			const windows_frame_material = new THREE.MeshPhongMaterial({color: "Khaki"});
+			const windows_frame_material = new THREE.MeshPhongMaterial({color: "chocolate"});
 
 			const windows_type_cross = "Cross";
 			const windows_type_single = "Single";
@@ -83,6 +84,8 @@
 			doorsMaterial.emissiveIntensity = 1;
 
 			const doorDepthModifier = 3 / 4;
+
+			const ironBackMaterial = new THREE.MeshPhongMaterial({color: "Fuchsia", shininess: 140, specular: "DarkMagenta"});
 
 			//Start building the house
 
@@ -345,7 +348,7 @@
 				geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
 
 				// построяване на самия обект
-				let wall = new THREE.Mesh( geometry, default_material );
+				let wall = new THREE.Mesh( geometry, wall_Material );
 				wall.castShadow = true;
 
 				let wallWithWindows = new THREE.Group();
@@ -479,22 +482,7 @@
 			
 			let inner_wall1 = createWall_RectangularWithWindows(
 				5 - wallDepth, wallsHeight, [(5 - wallDepth)/2, 0, 2], [0, 0, 0],
-			)
-
-			// let inner_wall_slanted_part_1 = createWallWithDepth(
-			// 	[
-			// 		new THREE.Vector2(-wallDepth, -wallDepth),
-			// 		new THREE.Vector2(-wallDepth, 0),
-			// 		new THREE.Vector2(0, 0),
-			// 		new THREE.Vector2(0 - 1.8 - wallDepth, 1.6 + wallDepth),
-			// 		new THREE.Vector2(0 - 1.8 - wallDepth, 1.6),
-			// 		new THREE.Vector2(0 - 1.8 - wallDepth * 2, 1.6),
-			// 		new THREE.Vector2(-wallDepth, -wallDepth),
-			// 	],
-			// 	[wallDepth, 3, 2 + wallDepth],
-			// 	[pi / 2, 0, 0],
-			// 	wallsHeight
-			// )	
+			)	
 			
 			let inner_wall_slanted_length = 2.56125;
 			let inner_wall_slanted_part_1_spanRegulator = 0.30478282088;
@@ -659,8 +647,6 @@
 			innerWalls.add(inner_wall_11_right);
 			innerWalls.add(inner_wall_11_upper);
 
-			
-
 			//Add the doors
 			let doorTemplate = new THREE.Mesh(
 				new THREE.BoxGeometry(1, 2, wallDepth * doorDepthModifier),
@@ -690,8 +676,9 @@
 			doors.add(createDoor(doorTemplate, [-1.4 - wallDepth / 2, 1, -2.9 ], [0, pi / 2, 0]));
 			doors.add(createDoor(doorTemplate, [1.4 + wallDepth / 2, 1, -2.9 ], [0, pi / 2, 0]));
 
-			//Add the bathtub			
+			/**********************************************************************/
 
+			//Add the bathtub			
 			let bathtubOuterShape = new THREE.Shape();
 
 			let bathtubEdgeRad = 0.2;
@@ -719,6 +706,9 @@
 			};
 			let bathtubOuterShapeGeometry = new THREE.ExtrudeGeometry( bathtubOuterShape, extrudeSettings );
 			let bathtubOuterShapeMesh = new THREE.Mesh(bathtubOuterShapeGeometry, default_material);
+			bathtubOuterShapeMesh.castShadow = true;
+			bathtubOuterShapeMesh.receiveShadow = true;
+
 			bathtubOuterShapeMesh.position.set(0, bathtubHeight, 0);
 			bathtubOuterShapeMesh.rotation.set(pi / 2, 0, 0);
 
@@ -730,6 +720,8 @@
 
 			csg.subtract([bathtubOuterShapeMesh, bathtubInnerShapeMesh]);
 			let bathtubBase = csg.toMesh();
+			bathtubBase.castShadow = true;
+			bathtubBase.receiveShadow = true;
 
 			let bathtubInnerShapeMesh_smaller = bathtubInnerShapeMesh.clone();
 			bathtubInnerShapeMesh_smaller.scale.set(0.3, 0.8, 5/6);
@@ -740,6 +732,7 @@
 				new THREE.CylinderGeometry(0.6, 0.6, 10, 32, 1),
 				default_material
 			);
+
 			bathtubSlantCylinder.rotation.set(pi / 2, 0, 0);
 			bathtubSlantCylinder.position.set(bathtubInnerShapeMesh_smaller.position.x + 0.4, 
 				bathtubInnerShapeMesh_smaller.position.y,
@@ -750,6 +743,9 @@
 			csg.subtract([bathtubInnerShapeMesh_smaller, bathtubSlantCylinder]);
 
 			let bathtubSlant = csg.toMesh();
+			bathtubSlant.castShadow = true;
+			bathtubSlant.receiveShadow = true;
+
 			bathtubSlant.position.set(-0.4, -bathtubHeight - 0.4, 0)
 			bathtubSlant.scale.set(1.2, 1, 1);
 			bathtubSlant.rotation.y = pi;
@@ -761,6 +757,8 @@
 			//Add kran4eta to the bathtub
 			let bathtubWaterTubeGeom = new THREE.CylinderGeometry(0.05, 0.1, 0.2, 32);
 			let bathtubWaterTube = new THREE.Mesh(bathtubWaterTubeGeom, default_material);
+			bathtubWaterTube.castShadow = true;
+
 			bathtubWaterTube.position.set(-bathtubLength / 2, bathtubHeight + 0.1, 0.2);
 
 			let bathtubWaterTube_2 = bathtubWaterTube.clone();
@@ -770,6 +768,8 @@
 				new THREE.TorusGeometry(0.2, 0.051, 16, 32, pi),
 				default_material
 			);
+			bathtubWaterTube_connecter.castShadow = true;
+
 			bathtubWaterTube_connecter.position.set(-bathtubLength / 2, bathtubHeight + 0.1 + 0.2 / 2, 0)
 			bathtubWaterTube_connecter.rotation.set(0, pi / 2, 0);
 
@@ -779,6 +779,7 @@
 				new THREE.CylinderGeometry(bathtubWaterTube_left_rad, bathtubWaterTube_left_rad, bathtubWaterTube_left_length, 32),
 				default_material
 			);
+			bathtubWaterTube_left.castShadow = true;
 
 			let bathtubWaterTube_left_y_offset = 0.1;
 			let bathtubWaterTube_left_z_offset = Math.sqrt(0.2 * 0.2 - bathtubWaterTube_left_y_offset * bathtubWaterTube_left_y_offset);
@@ -799,6 +800,7 @@
 					bathtubWaterTube_valve_torus_tubes_rad, 16, 32),
 				default_material
 			);
+			bathtubWaterTube_valve_torus.castShadow = true;
 
 			bathtubWaterTube_valve_torus.position.set(bathtubWaterTube_left.position.x + 
 				bathtubWaterTube_left_length / 2 + bathtubWaterTube_valve_torus_tubes_rad / 2,
@@ -814,6 +816,7 @@
 					bathtubWaterTube_valve_cueTip_cylinder_length, 32),
 				default_material
 			);
+			bathtubWaterTube_valve_cueTip_cylinder.castShadow = true;
 
 			bathtubWaterTube_valve_cueTip_cylinder.position.set(
 				bathtubWaterTube_valve_torus.position.x + bathtubWaterTube_valve_torus_tubes_rad / 4,
@@ -827,6 +830,8 @@
 					32, 32),
 					default_material
 			);
+			bathtubWaterTube_valve_cueTip_sphere_first.castShadow = true;
+
 			bathtubWaterTube_valve_cueTip_sphere_first.position.set(
 				bathtubWaterTube_valve_cueTip_cylinder.position.x,
 				bathtubWaterTube_valve_cueTip_cylinder.position.y - Math.cos(bathtubWaterTube_valve_cueTip_cylinder_tiltAngle) * bathtubWaterTube_valve_cueTip_cylinder_length / 2,
@@ -855,6 +860,7 @@
 			bathtubWaterTube_valve_template.add(bathtubWaterTube_valve_torus);
 			bathtubWaterTube_valve_template.add(bathtubWaterTube_valve_cueTip);
 			bathtubWaterTube_valve_template.add(bathtubWaterTube_valve_cueTip_otherDir);
+			bathtubWaterTube_valve_template.castShadow = true;
 
 			let bathtubWaterTube_valve_left = bathtubWaterTube_valve_template.clone();
 			let bathtubWaterTube_valve_right = bathtubWaterTube_valve_template.clone();
@@ -867,6 +873,7 @@
 				32),
 				new THREE.MeshPhongMaterial({color: "Red"}),
 			);
+			bathtubWaterTube_valve_left_hot.castShadow = true;
 			
 			bathtubWaterTube_valve_left_hot.position.set(
 				bathtubWaterTube_valve_cueTip_cylinder.position.x + bathtubWaterTube_valve_cueTip_cylinder_rad,
@@ -898,6 +905,7 @@
 					bathtubWaterTube_center_length, 32),
 					default_material
 			);
+			bathtubWaterTube_center.castShadow = true;
 
 			bathtubWaterTube_center.position.set(bathtubWaterTube_connecter.position.x + bathtubWaterTube_center_length / 2,
 				bathtubWaterTube_connecter.position.y + bathtubWaterTube_center_y_offset, 
@@ -911,6 +919,7 @@
 					pi / 2),
 				new THREE.MeshPhongMaterial({side: THREE.DoubleSide})
 			);
+			bathtubWaterTube_center_torus.castShadow = true;
 
 			bathtubWaterTube_center_torus.position.set(
 				bathtubWaterTube_center.position.x + bathtubWaterTube_center_length / 2,
@@ -1070,6 +1079,8 @@
 			let ironPlateGeometry = new THREE.ExtrudeGeometry( ironPlateShape, ironPlateShapeExtrudeSettings );
 
 			let ironPlate = new THREE.Mesh(ironPlateGeometry, default_material);
+			ironPlate.castShadow = true;
+
 			ironPlate.position.y = 0.1;
 			ironPlate.rotation.set(0, tempRotation, 0);
 
@@ -1088,6 +1099,7 @@
 			csg.intersect([ironPlate, ironPlateRoundedTopCylinder]);
 
 			let ironPlate_roundedTop = csg.toMesh();
+			ironPlate_roundedTop.castShadow = true;
 
 			let ironPlateRoundedTopBox = new THREE.Mesh(
 				new THREE.BoxGeometry(1, 0.001 + 1, 1),
@@ -1107,6 +1119,7 @@
 			csg.subtract([ironPlate, ironPlateRoundedTopBox]);
 
 			let ironPlate_base = csg.toMesh();
+			ironPlate_base.castShadow = true;
 
 			let ironPlate_group = new THREE.Group();
 
@@ -1137,7 +1150,10 @@
 
 			let ironPlateShape_NoHoles_geometry = new THREE.ExtrudeGeometry( ironPlateShape_NoHoles, 
 				ironPlateShape_NoHoles_ExtrudeSettings );
+
 			let ironPlate_NoHoles = new THREE.Mesh(ironPlateShape_NoHoles_geometry, default_material);
+			ironPlate_NoHoles.castShadow = true;
+
 			ironPlate_NoHoles.position.set(0, 0.1, -ironPlate_NoHoles_thickness);
 			ironPlate_NoHoles.rotation.set(0, tempRotation, 0);
 			ironPlate_NoHoles.scale.set(1, 0.97, 1);
@@ -1156,6 +1172,7 @@
 				new THREE.BoxGeometry(ironBox_Behind_Width, ironBox_Behind_Height, ironBox_Behind_Depth),
 				default_material
 			);
+			ironBox_Behind.castShadow = true;
 
 			ironBox_Behind.position.set(0, 
 				ironBox_Behind_Height / 2, 
@@ -1172,6 +1189,8 @@
 			let ironPlate_Behind_Depth = 30;
 
 			ironPlate_BehindShape = csg.toMesh();
+			ironPlate_BehindShape.castShadow = true;
+
 			ironPlate_BehindShape.scale.set(1.1, 1.19, ironPlate_Behind_Depth);
 			ironPlate_BehindShape.position.z -= ironPlate_NoHoles_thickness;
 
@@ -1180,6 +1199,9 @@
 			csg.intersect([ironPlate_NoHoles, ironBox_Behind_csgCopy]);
 
 			let ironPlate_BehindShape_bottom = csg.toMesh();
+			ironPlate_BehindShape_bottom.castShadow = true;
+			ironPlate_BehindShape_bottom.material = ironBackMaterial;
+
 			ironPlate_BehindShape_bottom.position.set(0, 0, -ironPlate_NoHoles_thickness );
 			ironPlate_BehindShape_bottom.scale.set(1.1, 1.19, ironPlate_Behind_Depth);
 			
@@ -1200,66 +1222,25 @@
 			csg.subtract([ironPlate_BehindShape_bottom, ironPlate_BehindShape_bottom_cylinderCSG]);
 
 			let ironPlate_BehindShape_bottom_cropped = csg.toMesh();
+			ironPlate_BehindShape_bottom_cropped.castShadow = true;
 
 			csg = new CSG();
 
 			csg.subtract([ironPlate_BehindShape, ironPlate_BehindShape_bottom_cylinderCSG]);
 
 			let ironPlate_BehindShape_cropped = csg.toMesh();
+			ironPlate_BehindShape_cropped.castShadow = true;
 
-			ironPlate_BehindShape_cropped.material = new THREE.MeshPhongMaterial({side: THREE.DoubleSide});
+			ironPlate_BehindShape_cropped.material = ironBackMaterial;
+			ironPlate_BehindShape_cropped.material.side = THREE.DoubleSide;
 
 			ironPlate_both_group.position.y += 0.5;
-			
-			let handle_elipsoid_shape = new THREE.Shape();
-			
-			handle_elipsoid_shape.moveTo(0, 0);
-
-			handle_elipsoid_shape.absellipse(0, 0, 0.4, 1.2, 0, pi * 2, );
-
-			let handle_elipsoid_shape_Depth = 3
-
-			let handle_elipsoid_shape_ExtrudeSettings = { 
-				depth: handle_elipsoid_shape_Depth, 
-				bevelEnabled: false, 
-				bevelSegments: 16, 
-				steps: 2, 
-				bevelSize: 0.01, 
-				bevelThickness: 0.01, 
-				curveSegments: 60 
-			};
-
-			let handle_elipsoid_shape_geometry = new THREE.ExtrudeGeometry( handle_elipsoid_shape, 
-			handle_elipsoid_shape_ExtrudeSettings );
-
-			let handle_elipsoid_csg = new THREE.Mesh(
-				handle_elipsoid_shape_geometry,
-				new THREE.MeshPhongMaterial({side: THREE.DoubleSide})
-			);
-
-			handle_elipsoid_csg.position.set(
-				ironPlate_BehindShape_cropped.position.x - 1.5, 
-				ironPlate_BehindShape_cropped.position.y + 3.25,
-				ironPlate_BehindShape_cropped.position.z - 1.1
-			);
-			handle_elipsoid_csg.rotation.set(0, pi / 2, 0);
-
-			csg = new CSG();
-
-			csg.intersect([handle_elipsoid_csg, ironPlate_BehindShape_cropped]);
-
-			let ironPlate_BehindShape_handle_intersection = csg.toMesh();
-
-			csg = new CSG();
-
-			csg.subtract([ironPlate_BehindShape_cropped, ironPlate_BehindShape_handle_intersection]);
-
-			let ironPlate_BehindShape_cropped_withHandle = csg.toMesh();
 
 			let ironHandle = new THREE.Mesh(
 				new THREE.TorusGeometry(1.75, 0.25, 32, 32, pi * 3 / 4),
-				default_material
+				ironBackMaterial
 			);
+			ironHandle.castShadow = true;
 
 			ironHandle.position.set(
 				ironPlate_BehindShape_cropped.position.x, 
@@ -1278,8 +1259,187 @@
 
 			ironGroup.scale.set(0.1, 0.1, 0.1);
 
-			scene.add(ironGroup);
+			//Add the ironing board
 
+			let ironBoardHeightOffset = 0;
+			let ironBoardLength = 1; 
+			let ironBoardRad = 0.2;
+			let ironBoardWidth = 0.4;
+			let ironBoardDepth = 0.03;
+			let ironBoardHeight = 1;
+
+			let ironBoardShape = new THREE.Shape();
+			ironBoardShape.moveTo(-ironBoardLength / 2, -ironBoardWidth / 2);
+			ironBoardShape.lineTo(ironBoardLength / 2, -ironBoardWidth / 2);
+			ironBoardShape.arc(0, ironBoardWidth / 2, ironBoardRad, - pi / 2, pi / 2);
+			ironBoardShape.moveTo(ironBoardLength / 2, ironBoardWidth / 2);
+			ironBoardShape.lineTo(-ironBoardLength / 2, ironBoardWidth / 2);
+			ironBoardShape.arc(0, -ironBoardWidth / 2, ironBoardRad, pi / 2, -pi / 2);
+
+			let ironBoard_ExtrudeSettings = { 
+				depth: ironBoardDepth, 
+				bevelEnabled: false, 
+				bevelSegments: 16, 
+				steps: 2, 
+				bevelSize: 0.01, 
+				bevelThickness: 0.01, 
+				curveSegments: 60 
+			};
+
+			let ironBoardShape_geometry = new THREE.ExtrudeGeometry( ironBoardShape, 
+			ironBoard_ExtrudeSettings );
+
+			let ironBoardPlank = new THREE.Mesh(
+				ironBoardShape_geometry,
+				new THREE.MeshPhongMaterial({color: "lightgreen"})
+			);
+			ironBoardPlank.castShadow = true;
+			ironBoardPlank.receiveShadow = true;
+
+			ironBoardPlank.position.set(0, ironBoardHeightOffset + ironBoardHeight + ironBoardDepth, 0);
+			ironBoardPlank.rotation.set(pi / 2, 0, 0);
+
+			ironGroup.position.y += ironBoardHeight + ironBoardDepth / 2;
+
+			let ironBoardLegsTubeRad = 0.01;
+
+			let ironBoardCylinder1Length = ironBoardWidth / 2;
+			let ironBoardCylinder1 = new THREE.Mesh(
+				new THREE.CylinderGeometry(ironBoardLegsTubeRad, ironBoardLegsTubeRad, ironBoardCylinder1Length, 32),
+				new THREE.MeshPhongMaterial({color: "red"})
+			);
+			ironBoardCylinder1.castShadow = true;
+
+			ironBoardCylinder1.rotation.set(pi / 2, 0, 0);
+			ironBoardCylinder1.position.set(-ironBoardLength / 2,
+				ironBoardHeightOffset +  ironBoardHeight - ironBoardLegsTubeRad, 0);
+
+			let ironBoardTorus1_left_legTilt = -pi / 4;
+			let ironBoardTorus1_left_centerRad = 0.05;
+			let ironBoardTorus1_left = new THREE.Mesh(
+				new THREE.TorusGeometry(ironBoardTorus1_left_centerRad, ironBoardLegsTubeRad, 32, 32,  pi / 2),
+				default_material
+			);
+			ironBoardTorus1_left.castShadow = true;
+			
+			ironBoardTorus1_left.position.set(
+				ironBoardCylinder1.position.x - ironBoardTorus1_left_centerRad * Math.sin(ironBoardTorus1_left_legTilt),
+				ironBoardCylinder1.position.y - ironBoardTorus1_left_centerRad * Math.cos(ironBoardTorus1_left_legTilt),
+				ironBoardCylinder1.position.z + ironBoardCylinder1Length / 2
+			);
+			ironBoardTorus1_left.rotation.set(pi / 2, ironBoardTorus1_left_legTilt, pi / 2);
+
+			let ironBoardTorus1_right = ironBoardTorus1_left.clone();
+			ironBoardTorus1_right.position.z *= -1;
+			ironBoardTorus1_right.rotation.z = pi;
+
+			let ironBoardLegs_horseShoe = new THREE.Group();
+
+			ironBoardLegs_horseShoe.add(ironBoardCylinder1);
+			ironBoardLegs_horseShoe.add(ironBoardTorus1_left);
+			ironBoardLegs_horseShoe.add(ironBoardTorus1_right);
+
+			let ironBoardLegs_horseShoe_bottom = ironBoardLegs_horseShoe.clone();
+			ironBoardLegs_horseShoe_bottom_rotationPivotPoint = new THREE.Vector3(
+				ironBoardLength / 2,
+				ironBoardHeightOffset,
+				0
+			);
+
+			ironBoardLegs_horseShoe_bottom.position.set(
+				ironBoardLength,
+				-ironBoardHeight,
+				0
+			);		
+
+			rotateAroundPivot(ironBoardLegs_horseShoe_bottom, ironBoardLegs_horseShoe_bottom_rotationPivotPoint,
+				new THREE.Vector3(1, 0, 0), pi);
+
+			rotateAroundPivot(ironBoardLegs_horseShoe_bottom, ironBoardLegs_horseShoe_bottom_rotationPivotPoint,
+				new THREE.Vector3(0, 1, 0), pi);
+
+			ironBoardLegs_horseShoe_bottom.position.x -= 0.02;
+
+			//For better visibility
+			let measureBox = new THREE.Mesh(
+				new THREE.BoxGeometry(2, 0.001, 1),
+				default_material
+			);
+
+			measureBox.position.set(0, 1 - 0.001 / 2, 0);
+
+			let ironBoardLeg_left_left_length = 
+				ironBoardLength / Math.cos(ironBoardTorus1_left_legTilt) - ironBoardLegsTubeRad * 2;
+
+			let ironBoardLeg_left_left = new THREE.Mesh(
+				new THREE.CylinderGeometry(ironBoardLegsTubeRad, ironBoardLegsTubeRad, 
+					1.3,
+					32),
+				default_material
+			);
+			ironBoardLeg_left_left.castShadow = true;
+
+			ironBoardLeg_left_left.rotation.set(0, 0, -ironBoardTorus1_left_legTilt);
+			ironBoardLeg_left_left.position.set(
+				-0.01, ironBoardHeightOffset + 0.5,
+				ironBoardCylinder1Length / 2 + ironBoardTorus1_left_centerRad,
+			);
+
+			let ironBoardLeg_left_right = ironBoardLeg_left_left.clone();
+			ironBoardLeg_left_right.position.z *= -1;
+
+			let ironBoardLegLeft = new THREE.Group();
+			ironBoardLegLeft.add(ironBoardLegs_horseShoe);
+			ironBoardLegLeft.add(ironBoardLegs_horseShoe_bottom);
+			ironBoardLegLeft.add(ironBoardLeg_left_left);
+			ironBoardLegLeft.add(ironBoardLeg_left_right);
+
+			let ironBoardLegRight = ironBoardLegLeft.clone();
+			ironBoardLegRight.rotation.set(0, pi, 0);
+
+			let ironBoardLegConnector = new THREE.Mesh(
+				new THREE.CylinderGeometry(ironBoardLegsTubeRad, ironBoardLegsTubeRad, 
+				ironBoardWidth - ironBoardTorus1_left_centerRad * 1.5, 32),
+				default_material
+			);
+			ironBoardLegConnector.castShadow = true;
+
+			ironBoardLegConnector.position.set(0, ironBoardHeightOffset + ironBoardHeight / 2 - ironBoardLegsTubeRad, 0);
+			ironBoardLegConnector.rotation.set(pi / 2, 0, 0);
+
+			let ironBoard = new THREE.Group();
+			ironBoard.add(ironBoardPlank)
+			ironBoard.add(ironBoardLegLeft)
+			ironBoard.add(ironBoardLegRight)
+			ironBoard.add(ironBoardLegConnector);
+
+			ironGroup.rotation.y = -pi / 2;
+			ironGroup.position.x += ironBoardLength / 3;
+
+			let ironWithBoard = new THREE.Group();
+			ironWithBoard.add(ironBoard);
+			ironWithBoard.add(ironGroup);
+
+			ironWithBoard.position.set(-4.8, 0, 0.8)
+
+			bathtub.position.z -= 1.2;
+
+			// scene.add(ironBoardPlank);
+			// scene.add(ironBoardLegLeft);
+			// scene.add(ironBoardLegRight);
+			// scene.add(ironBoardLegConnector);
+			// scene.add(ironBoardLegs_horseShoe);
+			// scene.add(ironBoardLegs_horseShoe_bottom);
+			// scene.add(ironBoardLeg_left_left);
+			// scene.add(ironBoardLeg_left_right);
+
+			// scene.add(measureBox);
+			// scene.add(ironBoardCylinder1);
+			// scene.add(ironBoardTorus1_left);
+			// scene.add(ironBoardTorus1_right);
+			// scene.add(ironBoardCylinder2);
+
+			// scene.add(ironGroup);
 			// scene.add(ironPlate_both_group);
 			// scene.add(ironBox_Behind);
 			// scene.add(ironBox_Behind_csgCopy);
@@ -1293,10 +1453,11 @@
 			// scene.add(ironPlate_BehindShape_cropped_withHandle);
 			// scene.add(kur);
 
-			// scene.add(bathtub);
-			// scene.add(innerWalls);
-			// scene.add( outerWalls );
-			// scene.add(doors);
+			scene.add(ironWithBoard);
+			scene.add(bathtub);
+			scene.add(innerWalls);
+			scene.add( outerWalls );
+			scene.add(doors);
 			
 		</script>
 		
