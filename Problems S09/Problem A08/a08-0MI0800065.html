@@ -1,0 +1,226 @@
+﻿<html>
+	<head>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="three.min.old.js"></script>
+		<script src="OrbitControls.js"></script>
+		<script src="CSG.js"></script>
+		<script>
+			// Задача: Направете топката да се движи по
+			// оста X, като рикошира от двата края
+			
+			var renderer = new THREE.WebGLRenderer({antialias:true});
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setAnimationLoop( drawFrame );
+			document.body.appendChild( renderer.domElement );
+
+			renderer.shadowMap.enabled = true;
+			renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+			var scene = new THREE.Scene();
+			scene.background = new THREE.Color( 'skyblue' );
+			
+			var aspect = window.innerWidth/window.innerHeight;
+			var camera = new THREE.PerspectiveCamera( 40, aspect );
+			camera.position.set( 0, 50, 120 );
+			// camera.lookAt( new THREE.Vector3( 0, 0, 0 ) );
+
+			var controls = new THREE.OrbitControls( camera, renderer.domElement );
+			// controls.maxPolarAngle = Math.PI * 0.45;
+			// controls.minDistance = 2;
+			// controls.maxDistance = 30;
+			controls.update();
+
+			// платформата
+			// var ground = new THREE.Mesh(
+			// 	new THREE.BoxGeometry( 1000, 2.2, 1000 ),
+			// 	new THREE.MeshPhongMaterial( {color: 'LawnGreen'} )
+			// );
+			// ground.position.y = -6;
+			// ground.receiveShadow = true;
+			// scene.add( ground );
+		
+			// светлина
+			var light = new THREE.PointLight( 'white', 0.5 );
+			light.position.set( 0, 100, 0 );
+			light.castShadow = false;
+			scene.add( light );
+
+			var light = new THREE.PointLight( 'white', 0.5 );
+			light.position.set( 0, 0, 100 );
+			light.castShadow = false;
+			scene.add( light );
+
+			var light = new THREE.PointLight( 'white', 0.5 );
+			light.position.set( 0, -100, 0 );
+			light.castShadow = false;
+			scene.add( light );
+
+			// let lightAmbient = new THREE.AmbientLight('white', 0.5);
+			// scene.add(lightAmbient);		
+
+			let glassMaterialBase = new THREE.MeshPhongMaterial({
+					transparent: true,
+					side: THREE.DoubleSide,
+					opacity: 0.2
+				});
+
+			let glassBase = new THREE.Mesh(
+				new THREE.TorusGeometry(3, 4, 3, 32),
+				glassMaterialBase
+			)
+			glassBase.rotation.x = (Math.PI / 2);
+			glassBase.material = glassBase.material.clone();
+			glassBase.material.opacity = 1;
+
+			let csgCube = new THREE.Mesh(
+				new THREE.BoxGeometry(50, 5, 50),
+				new THREE.MeshPhongMaterial({color: "orange"})
+			);
+
+			csgCube.position.set(0, -1.5, 0);
+
+			let csg = new CSG();
+
+			csg.subtract([glassBase, csgCube]);
+
+			glassBase = csg.toMesh();
+
+			let glassHandleHeight = 12;
+
+			let glassHandle = new THREE.Mesh(
+				new THREE.CylinderGeometry(1, 1, glassHandleHeight, 32),
+				glassMaterialBase.clone()
+			)
+			glassHandle.material.opacity = 0.3;
+			glassHandle.position.set(0, glassHandleHeight / 2 + 1, 0);
+
+			let glassBaseHandleBottom = new THREE.Mesh(
+				new THREE.CircleGeometry(1, 32),
+				glassMaterialBase
+			);
+			glassBaseHandleBottom.material = glassBaseHandleBottom.material.clone();
+			glassBaseHandleBottom.material.transparent = false;
+			glassBaseHandleBottom.position.set(0, 1, 0);
+			glassBaseHandleBottom.rotation.x = Math.PI / 2;
+
+			let glassBall = new THREE.Mesh(
+				new THREE.SphereGeometry(7, 32, 32, 0, Math.PI * 2, -Math.PI, Math.PI * 3 / 4),
+				glassMaterialBase
+			)
+			// glassBall.material.opacity = 0;
+			glassBall.position.set(0, glassHandle.position.y + glassHandleHeight / 2 + 6.9, 0);
+
+			let glassLiquid = glassBall.clone();
+
+			glassLiquid.scale.set(0.95, 0.95, 0.95);
+
+			glassLiquid.material = glassLiquid.material.clone();
+			glassLiquid.material.color.set("red");
+			glassLiquid.material.side = THREE.DoubleSide
+			glassLiquid.material.opacity = 0.8;
+			glassLiquid.renderOrder = -1;
+
+			let glassLiquidCircleRad = Math.sin(Math.PI / 4) * 7;
+
+			let glassLiquidTopCircle = new THREE.Mesh(
+				new THREE.CircleGeometry(glassLiquidCircleRad, 32),
+				glassLiquid.material.clone()
+			);
+			glassLiquidTopCircle.rotation.x = Math.PI / 2;
+			glassLiquidTopCircle.position.set(0, glassLiquid.position.y + glassLiquidCircleRad * 0.95, 0);
+			glassLiquidTopCircle.scale.set(0.95, 0.95, 0.95);
+			glassLiquidTopCircle.renderOrder = -1;
+
+			let lemonRad = 3;
+			let lemonWidth = 0.5;
+
+			let lemon = new THREE.Mesh(
+				new THREE.CylinderGeometry(lemonRad, lemonRad, lemonWidth, 32),
+				new THREE.MeshPhongMaterial({color: "yellow", side: THREE.DoubleSide})
+			)
+
+			let csgCubeLemon = new THREE.Mesh(
+				new THREE.BoxGeometry(6, 1, 6)
+			) 
+			csgCubeLemon.position.set(-lemonRad, 0, 0)
+
+			csg = new CSG();
+			csg.subtract([lemon, csgCubeLemon]);
+
+			lemon = csg.toMesh();
+
+			lemon.position.set(0, 40, 0);
+			// lemon.rotation.x = Math.PI / 2;
+
+			scene.add(glassBase);
+			scene.add(glassHandle);
+			scene.add(glassBaseHandleBottom);
+			scene.add(glassBall);
+			scene.add(glassLiquid);
+			scene.add(glassLiquidTopCircle);
+			scene.add(lemon);
+			// scene.add(csgCube);
+			
+			lemon.gravMovement = new THREE.Vector3();
+			const gravity = new THREE.Vector3(0, -0.005, 0);
+			const liquidStoppingPower = new THREE.Vector3(0, 0.03, 0);
+			// let middleGround = glassLiquidTopCircle.position.y;
+			let middleGround = glassLiquidTopCircle.position.y - 0.1;
+			// let middleGround = glassLiquidTopCircle.position.y - lemonWidth / (Math.abs(liquidStoppingPower.y / gravity.y) + 1);
+
+			function drawFrame()
+			{
+				let lemonTop = lemon.position.y + lemonWidth / 2;
+				let lemonBottom = lemon.position.y - lemonWidth / 2;
+
+				// if (lemonBottom > glassLiquidTopCircle.position.y) {
+				// 	lemon.gravMovement.add(gravity);
+				// }
+				// else if (lemonTop < glassLiquidTopCircle.position.y){
+				// 	if(lemon.gravMovement.y < liquidStoppingPower.y) {
+				// 		lemon.gravMovement.add(liquidStoppingPower);
+				// 	}
+				// }
+				if (lemonBottom > middleGround) {
+					lemon.gravMovement.add(gravity);
+				}
+				else if (lemonTop < middleGround){
+					if(lemon.gravMovement.y < liquidStoppingPower.y) {
+						lemon.gravMovement.add(liquidStoppingPower);
+					}
+				}
+				else {
+
+					// let lemonAboveLiquidPortion = lemonTop - glassLiquidTopCircle.position.y;
+					// let lemonUnderLiquidPortion = glassLiquidTopCircle.position.y - lemonBottom;
+					let lemonAboveLiquidPortion = Math.abs(lemonTop - middleGround);
+					let lemonUnderLiquidPortion = Math.abs(middleGround - lemonBottom);
+
+					// let totalLemonPortion = lemonRad * 2; 
+					let totalLemonPortion = lemonTop - lemonBottom;
+					
+					let downwardsMovement = gravity.clone().multiplyScalar(lemonAboveLiquidPortion / totalLemonPortion);
+					let upwardsMovement = liquidStoppingPower.clone().multiplyScalar(lemonUnderLiquidPortion / totalLemonPortion);
+
+					if(Math.abs(downwardsMovement.y - upwardsMovement.y) < 0.018 && 
+						Math.abs(lemon.gravMovement.y) < 0.01) {
+						//Don't do anything
+						lemon.gravMovement.y = 0.002 * (downwardsMovement.y > upwardsMovement.y ? -1 : 1);
+					}
+					else if(lemon.gravMovement.y < liquidStoppingPower.y ) {
+						lemon.gravMovement.add(downwardsMovement.add(upwardsMovement));
+					}
+				}
+
+				lemon.position.add(lemon.gravMovement);	
+			
+				renderer.render( scene, camera );
+			}
+		</script>
+	</body>
+</html>

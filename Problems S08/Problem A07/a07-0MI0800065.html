@@ -1,0 +1,169 @@
+﻿<html>
+	<head>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="three.min.js"></script>
+		<script src="OrbitControls.js"></script>
+		<script src="CSG.js"></script>
+		<script>
+			// Задача: Направете топката да се движи по
+			// оста X, като рикошира от двата края
+			
+			
+			var renderer = new THREE.WebGLRenderer({antialias:true});
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setAnimationLoop( drawFrame );
+			document.body.appendChild( renderer.domElement );
+
+			renderer.shadowMap.enabled = true;
+			renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+			var scene = new THREE.Scene();
+			scene.background = new THREE.Color( 'skyblue' );
+			
+			var aspect = window.innerWidth/window.innerHeight;
+			var camera = new THREE.PerspectiveCamera( 30, aspect );
+			camera.position.set( 0, 120, 250 );
+			// camera.lookAt( new THREE.Vector3( 0, 0, 0 ) );
+
+			var controls = new THREE.OrbitControls( camera, renderer.domElement );
+			controls.maxPolarAngle = Math.PI * 0.45;
+			// controls.minDistance = 2;
+			// controls.maxDistance = 30;
+			controls.update();
+
+			// топчето за движене
+			var ball = new THREE.Mesh(
+				new THREE.SphereGeometry( 5, 32, 32 ),
+				new THREE.MeshPhongMaterial( {color: 'orange', shininess: 10, specular: 'white', emissive: 'firebrick'} )
+			);
+			ball.castShadow = true;
+			scene.add( ball );
+
+			// платформата
+			var ground = new THREE.Mesh(
+				new THREE.BoxGeometry( 1000, 2.2, 1000 ),
+				new THREE.MeshPhongMaterial( {color: 'LawnGreen'} )
+			);
+			ground.position.y = -6;
+			ground.receiveShadow = true;
+			scene.add( ground );
+		
+			// стъкленият корпус
+			var glass = new THREE.Mesh(
+				new THREE.BoxGeometry( 160, 10, 10 ),
+				new THREE.MeshPhongMaterial( {color: 'azure', opacity: 0.2, transparent: true, shininess: 50, specular: 0x8080ff, side:THREE.BackSide} )
+			);
+			glass.receiveShadow = true;
+			// scene.add( glass );
+			
+			// бялата рамка на стъкления корпус
+			var frame = new THREE.BoxHelper( glass );
+			frame.material.color.set( 'white' );
+			// scene.add( frame );
+		
+			// светлина
+			// var light = new THREE.PointLight( 'white', 0.5 );
+			// light.position.set( 0, 100, 0 );
+			// light.castShadow = false;
+			// scene.add( light );
+
+			let lightAmbient = new THREE.AmbientLight('white', 0.5);
+			scene.add(lightAmbient);
+
+			let goalHeight = 100;
+			let goalPostRad = 3;
+
+			let leftPost = new THREE.Mesh(
+				new THREE.CylinderGeometry(3, 3, goalHeight, 32, 32),
+				new THREE.MeshPhongMaterial({emissive: "white"})
+			);
+
+			leftPost.position.set(
+				-80 - 3,
+				50 - 5,
+				goalHeight * 1.5 + goalPostRad
+			);
+
+			let rightPost = leftPost.clone();
+			rightPost.position.z *= -1;
+
+			let crossBar = new THREE.Mesh(
+				new THREE.CapsuleGeometry(3, goalHeight * 3 + goalPostRad * 2, 32, 32),
+				new THREE.MeshPhongMaterial({emissive: "white"})
+			);
+			crossBar.rotation.set(Math.PI / 2, 0, 0);
+			crossBar.position.set(-80 - 3, 100 - 5, 0);
+
+			let goalLine = new THREE.Mesh(
+				new THREE.BoxGeometry(goalHeight * 3 + goalPostRad * 2, 0.01, goalPostRad * 2),
+				new THREE.MeshPhongMaterial({emissive: "white"})
+			)
+
+			goalLine.position.set(-80 - 3, ground.position.y + 1.1 + 0.07, 0);
+			goalLine.rotation.set(0, Math.PI / 2, 0);
+
+
+			let textureLoader = new THREE.TextureLoader();
+			let goalNetMat = new THREE.MeshPhongMaterial();
+			// <a href="https://imgbb.com/"><img src="https://i.ibb.co/Hr861yd/NetS.png" alt="NetS" border="0" /></a>
+			goalNetMat.map = textureLoader.load("https://i.ibb.co/Hr861yd/NetS.png");
+
+			let goalNet = new THREE.Mesh(
+				new THREE.BoxGeometry(goalHeight, goalHeight, goalHeight * 3 + goalPostRad * 3),
+				goalNetMat
+			);
+			goalNet.position.set(
+				leftPost.position.x - goalHeight / 2,
+				leftPost.position.y,
+				0
+			);
+
+			let goalNetCSG = goalNet.clone();
+			goalNetCSG.scale.set(1, 1, 0.98);
+			goalNetCSG.position.x += 0.1;
+			goalNetCSG.position.y -= 0.1;
+
+			let csg = new CSG();
+
+			csg.subtract([goalNet, goalNetCSG]);
+
+			let somethingElse = csg.toMesh();
+
+			scene.add(leftPost);
+			scene.add(rightPost);
+			scene.add(crossBar);
+			scene.add(goalLine);
+			scene.add(somethingElse);
+
+			let ballTravelDistance = Math.abs(goalLine.position.x * 2) + 200;
+			let endOfTravel = ballTravelDistance / 2;
+
+			let framesToCoverDistance = 240;
+			let distanceStep = -1 / framesToCoverDistance;
+
+			let ballDistanceMod = 0.5;
+
+			function drawFrame()
+			{
+				scene.rotation.y = -1.5;
+				
+				if(ballDistanceMod > 1 && distanceStep > 0 || 
+					ballDistanceMod < 0 && distanceStep < 0) {
+					distanceStep = 0;
+				}
+
+				ball.position.x = 100 + ballDistanceMod * endOfTravel - (1 - ballDistanceMod) * endOfTravel;
+
+				ballDistanceMod += distanceStep;
+			
+			
+				renderer.render( scene, camera );
+			}
+		</script>
+	</body>
+</html>
